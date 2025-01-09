@@ -32,10 +32,12 @@ import { useWorkspace } from '@/app/lib/hooks/useWorkspace'
 import { welcomeAgentUtils } from '@/app/lib/firebase/welcomeAgentUtils'
 import { useToast } from '@/app/components/common/use-toast'
 import { ConfirmDialog } from '@/app/components/common/confirm-dialog'
+import { cn } from "@/lib/utils"
+import { Tooltip } from "@/app/components/common/tooltip"
 
 const presetDirectives = [
   { value: "industry-expert", label: "Position yourself as an industry expert", content: "Position yourself as an industry expert, sharing specific insights about challenges their competitors are facing." },
-  { value: "simple-custom-welcome", label: "Simple customized welcome email", content: "Send a simple customized welcome email that shows you looked up their business, how their a perfect fit, and benefits they'll get specifically based on their business." },
+  { value: "simple-custom-welcome", label: "Simple customized welcome email", content: "Send a simple customized welcome email that shows you looked up their business, how they're a perfect fit, and benefits they'll get specifically based on their business." },
   { value: "success-story", label: "Share a success story", content: "Write an email that includes a success story from a similar company in the recipient's industry." },
   { value: "book-call", label: "Suggest a quick call", content: "Suggest a quick call to discuss how we've helped similar companies in the recipient's industry." },
   { value: "product-demo", label: "Invite to product demo", content: "Invite the recipient to see a personalized demo of our solution, highlighting specific features that would benefit their role." },
@@ -47,6 +49,7 @@ export default function WelcomeAgentNew() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const editId = searchParams.get('edit')
+  const shouldOpenConfigure = searchParams.get('configure') === 'true'
   const { workspace } = useWorkspace()
   const { toast } = useToast()
   const [signupInfo, setSignupInfo] = useState("Name: Curran Van Waarde\nEmail: Curran@Agentfolio.ai\nWebsite: Agentfolio.ai\nRole: Founder")
@@ -70,6 +73,16 @@ export default function WelcomeAgentNew() {
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [pendingAction, setPendingAction] = useState<null | (() => void)>(null)
+  const [validationErrors, setValidationErrors] = useState<{
+    name?: string;
+    emailPurpose?: string;
+    businessPurpose?: string;
+  }>({})
+  const [openTooltips, setOpenTooltips] = useState<{
+    name?: boolean;
+    emailPurpose?: boolean;
+    businessPurpose?: boolean;
+  }>({})
 
   // Track initial values
   const [initialValues, setInitialValues] = useState({
@@ -166,6 +179,13 @@ export default function WelcomeAgentNew() {
     console.log('Current workspace:', workspace)
   }, [workspace])
 
+  // Open configure drawer if URL parameter is present
+  useEffect(() => {
+    if (shouldOpenConfigure) {
+      setIsConfigureDrawerOpen(true)
+    }
+  }, [shouldOpenConfigure])
+
   const handleNavigateAway = (action: () => void) => {
     if (hasUnsavedChanges) {
       setIsConfirmDialogOpen(true)
@@ -183,12 +203,36 @@ export default function WelcomeAgentNew() {
     setter(prev => !prev)
   }, [])
 
-  const handleDirectiveChange = (value: string) => {
+  const handlePresetDirectiveChange = (value: string) => {
     setSelectedDirective(value)
     const selectedPreset = presetDirectives.find(preset => preset.value === value)
     if (selectedPreset) {
       setDirective(selectedPreset.content)
     }
+  }
+
+  const handleDirectiveChange = (value: string) => {
+    if (value.trim()) {
+      setValidationErrors(prev => ({ ...prev, emailPurpose: undefined }))
+      setOpenTooltips(prev => ({ ...prev, emailPurpose: false }))
+    }
+    setDirective(value)
+  }
+
+  const handleBusinessPurposeChange = (value: string) => {
+    if (value.trim()) {
+      setValidationErrors(prev => ({ ...prev, businessPurpose: undefined }))
+      setOpenTooltips(prev => ({ ...prev, businessPurpose: false }))
+    }
+    setBusinessInfo(prev => ({ ...prev, purpose: value }))
+  }
+
+  const handleAgentNameChange = (value: string) => {
+    if (value.trim()) {
+      setValidationErrors(prev => ({ ...prev, name: undefined }))
+      setOpenTooltips(prev => ({ ...prev, name: false }))
+    }
+    setAgentName(value)
   }
 
   const handleTest = () => {
@@ -245,36 +289,49 @@ Sarah`
       return
     }
 
+    // Clear previous validation errors
+    setValidationErrors({})
+
     // Only validate required fields when publishing
     if (action === 'publish') {
+      const errors: typeof validationErrors = {}
+
       if (!agentName.trim()) {
-        console.log('Agent name validation failed')
-        toast({
-          title: "Error",
-          description: "Agent name is required",
-          variant: "destructive"
-        })
-        return
+        errors.name = "Agent name is required"
       }
 
-      if (!selectedDirective || !directive.trim()) {
-        console.log('Email purpose validation failed')
-        toast({
-          title: "Error",
-          description: "Email purpose is required",
-          variant: "destructive"
-        })
-        return
+      if (!directive.trim()) {
+        errors.emailPurpose = "AI directive is required"
       }
 
       if (!businessInfo.purpose.trim()) {
-        console.log('Business purpose validation failed')
+        errors.businessPurpose = "Sign up purpose is required"
+      }
+
+      if (Object.keys(errors).length > 0) {
+        // Open the collapsed sections if they contain errors
+        if (errors.emailPurpose) {
+          setIsEmailPurposeOpen(true)
+        }
+        if (errors.businessPurpose) {
+          setIsBusinessContextOpen(true)
+        }
+
+        setValidationErrors(errors)
+        setOpenTooltips(
+          Object.keys(errors).reduce((acc, key) => ({
+            ...acc,
+            [key]: true
+          }), {})
+        );
+
         toast({
-          title: "Error",
-          description: "Sign up purpose is required",
+          title: "Validation Error",
+          description: "Please fill in all required fields before publishing",
           variant: "destructive"
-        })
-        return
+        });
+
+        return;
       }
     }
 
@@ -389,15 +446,22 @@ Sarah`
             {isEditingName ? (
               <Input
                 value={agentName}
-                onChange={(e) => setAgentName(e.target.value)}
+                onChange={(e) => handleAgentNameChange(e.target.value)}
                 onBlur={() => setIsEditingName(false)}
                 onKeyDown={(e) => e.key === 'Enter' && setIsEditingName(false)}
-                className="max-w-[300px] text-xl font-semibold"
+                className={cn(
+                  "max-w-[300px] text-xl font-semibold",
+                  validationErrors.name && "border-red-500 focus-visible:ring-red-500"
+                )}
+                aria-invalid={!!validationErrors.name}
                 autoFocus
               />
             ) : (
               <h1 
-                className="text-xl font-semibold cursor-pointer hover:opacity-80 flex items-center gap-2" 
+                className={cn(
+                  "text-xl font-semibold cursor-pointer hover:opacity-80 flex items-center gap-2",
+                  validationErrors.name && "text-red-500"
+                )}
                 onClick={() => setIsEditingName(true)}
               >
                 {agentName}
@@ -445,11 +509,14 @@ Sarah`
               title="Email Purpose"
               isOpen={isEmailPurposeOpen}
               onToggle={() => toggleSection(setIsEmailPurposeOpen)}
+              className={cn(
+                validationErrors.emailPurpose && "ring-1 ring-red-500"
+              )}
             >
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="directive-select" className="text-sm font-medium">Choose Email Purpose</Label>
-                  <Select onValueChange={handleDirectiveChange} value={selectedDirective}>
+                  <Select onValueChange={handlePresetDirectiveChange} value={selectedDirective}>
                     <SelectTrigger className="mt-1">
                       <SelectValue placeholder="Select an email purpose" />
                     </SelectTrigger>
@@ -464,13 +531,22 @@ Sarah`
                 </div>
                 <div>
                   <Label htmlFor="ai-directive" className="text-sm font-medium">Customize AI Directive</Label>
-                  <Textarea
-                    id="ai-directive"
-                    placeholder="Customize the AI instructions for generating the email"
-                    value={directive}
-                    onChange={(e) => setDirective(e.target.value)}
-                    className="mt-1"
-                  />
+                  <Tooltip 
+                    content={validationErrors.emailPurpose} 
+                    open={openTooltips.emailPurpose}
+                    onOpenChange={(open) => setOpenTooltips(prev => ({ ...prev, emailPurpose: open }))}
+                  >
+                    <Textarea
+                      id="ai-directive"
+                      placeholder="Customize the AI instructions for generating the email"
+                      value={directive}
+                      onChange={(e) => handleDirectiveChange(e.target.value)}
+                      className={cn(
+                        "mt-1",
+                        validationErrors.emailPurpose && "border-red-500 focus-visible:ring-red-500"
+                      )}
+                    />
+                  </Tooltip>
                   <p className="text-xs text-muted-foreground mt-1">
                     Refine the AI's approach to writing the welcome email.
                   </p>
@@ -482,6 +558,9 @@ Sarah`
               title="Your Business Context"
               isOpen={isBusinessContextOpen}
               onToggle={() => toggleSection(setIsBusinessContextOpen)}
+              className={cn(
+                validationErrors.businessPurpose && "ring-1 ring-red-500"
+              )}
             >
               <div className="space-y-4">
                 <div>
@@ -517,13 +596,21 @@ Sarah`
 
                 <div>
                   <Label htmlFor="signup-purpose" className="text-sm font-medium">What are people signing up for?</Label>
-                  <Textarea 
-                    id="signup-purpose"
-                    placeholder="Briefly explain exactly what people will be signing up for"
-                    value={businessInfo.purpose}
-                    onChange={(e) => setBusinessInfo(prev => ({ ...prev, purpose: e.target.value }))}
-                    className="mt-1"
-                  />
+                  <Tooltip 
+                    content={validationErrors.businessPurpose} 
+                    open={openTooltips.businessPurpose}
+                    onOpenChange={(open) => setOpenTooltips(prev => ({ ...prev, businessPurpose: open }))}
+                  >
+                    <Textarea 
+                      id="signup-purpose"
+                      placeholder="Briefly explain exactly what people will be signing up for"
+                      value={businessInfo.purpose}
+                      onChange={(e) => handleBusinessPurposeChange(e.target.value)}
+                      className={cn(
+                        validationErrors.businessPurpose && "border-red-500 focus-visible:ring-red-500"
+                      )}
+                    />
+                  </Tooltip>
                 </div>
 
                 <div className="space-y-2">

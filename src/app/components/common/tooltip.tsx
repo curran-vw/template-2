@@ -1,0 +1,62 @@
+"use client"
+
+import * as React from "react"
+import * as TooltipPrimitive from "@radix-ui/react-tooltip"
+import { X } from "lucide-react"
+import { cn } from "@/app/lib/utils"
+
+const TooltipProvider = TooltipPrimitive.Provider
+const TooltipRoot = TooltipPrimitive.Root
+const TooltipTrigger = TooltipPrimitive.Trigger
+const TooltipContent = React.forwardRef<
+  React.ElementRef<typeof TooltipPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
+>(({ className, sideOffset = 4, ...props }, ref) => (
+  <TooltipPrimitive.Content
+    ref={ref}
+    sideOffset={sideOffset}
+    className={cn(
+      "z-50 overflow-hidden rounded-md bg-white px-3 py-1.5 text-sm text-red-500 border border-red-200 shadow-lg animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 relative pr-6",
+      className
+    )}
+    {...props}
+  />
+))
+TooltipContent.displayName = TooltipPrimitive.Content.displayName
+
+export function Tooltip({
+  children,
+  content,
+  open,
+  onOpenChange,
+  delayDuration = 100,
+  ...props
+}: {
+  children: React.ReactNode
+  content: React.ReactNode
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  delayDuration?: number
+} & Omit<React.ComponentPropsWithoutRef<typeof TooltipContent>, "content">) {
+  if (!open) {
+    return <>{children}</>
+  }
+
+  return (
+    <TooltipProvider>
+      <TooltipRoot defaultOpen={true} open={open} onOpenChange={onOpenChange}>
+        <TooltipTrigger asChild>{children}</TooltipTrigger>
+        <TooltipContent {...props}>
+          {content}
+          <button
+            className="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 hover:bg-gray-100 rounded-sm"
+            onClick={() => onOpenChange?.(false)}
+          >
+            <X className="h-3 w-3" />
+            <span className="sr-only">Close</span>
+          </button>
+        </TooltipContent>
+      </TooltipRoot>
+    </TooltipProvider>
+  )
+} 
