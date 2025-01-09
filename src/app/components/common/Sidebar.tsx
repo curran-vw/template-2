@@ -1,6 +1,6 @@
 'use client';
 
-import { LayoutDashboard, Mail, FileText, ChevronDown, ChevronFirst, ChevronLast } from 'lucide-react'
+import { LayoutDashboard, Mail, FileText, ChevronDown, ChevronFirst, ChevronLast, ClipboardList } from 'lucide-react'
 import { cn } from "@/lib/utils"
 import { Button } from "@/app/components/common/button"
 import { useState } from "react"
@@ -80,6 +80,13 @@ export default function Sidebar({ onCollapse, isMobileOpen, onMobileClose }: Sid
             { label: "Add New Agent", href: "/welcome-agent/new" },
             { label: "View All Agents", href: "/welcome-agent" }
           ]}
+        />
+        <NavItem 
+          icon={ClipboardList} 
+          label="Logs" 
+          href="/logs"
+          active={pathname === '/logs'} 
+          collapsed={collapsed} 
         />
       </nav>
     </div>

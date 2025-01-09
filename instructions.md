@@ -132,7 +132,7 @@ Below are the prompts used. **Note**: These should remain largely unchanged in i
 ---
 
 ## Admin Side
-- We need a **“Logs”** sidebar menu item that is only visible to the user with the email `Curranvw@gmail.com`.
+- We need a **“Logs”** sidebar menu item.
 - This **Logs** page shows a log of:
   - Every API call to OpenRouter  
   - Every website crawl  
