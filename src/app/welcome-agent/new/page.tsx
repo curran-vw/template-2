@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils"
 import { Tooltip } from "@/app/components/common/tooltip"
 import { BusinessContext } from '@/app/components/agent-specific/welcome-agent/business-context'
 import { useEmailGenerator } from '@/app/lib/hooks/useEmailGenerator'
+import { EmailGenerationDialog } from '@/app/components/agent-specific/welcome-agent/email-generation-dialog'
 
 const presetDirectives = [
   { value: "industry-expert", label: "Position yourself as an industry expert", content: "Position yourself as an industry expert, sharing specific insights about challenges their competitors are facing." },
@@ -87,6 +88,7 @@ export default function WelcomeAgentNew() {
     businessWebsite?: boolean;
   }>({})
   const [websiteSummary, setWebsiteSummary] = useState<string>('')
+  const [generationStep, setGenerationStep] = useState<'user-info' | 'business-info' | 'email-body' | 'subject-line' | null>(null)
 
   // Track initial values
   const [initialValues, setInitialValues] = useState({
@@ -290,6 +292,7 @@ export default function WelcomeAgentNew() {
 
   const generateEmailPreview = async () => {
     setIsSignupInfoDialogOpen(false)
+    setGenerationStep('user-info')
 
     const email = await generateEmail({
       signupInfo,
@@ -300,13 +303,16 @@ export default function WelcomeAgentNew() {
         websiteSummary,
         additionalContext: businessInfo.context
       },
-      agentId: editId
+      agentId: editId,
+      onStepChange: (step) => setGenerationStep(step)
     })
 
     if (email) {
       setEmailDetails(email)
       setHasTestedAgent(true)
     }
+    
+    setGenerationStep(null)
   }
 
   const handleGetEmail = () => {
@@ -811,6 +817,11 @@ export default function WelcomeAgentNew() {
           setHasUnsavedChanges(false)
           pendingAction?.()
         }}
+      />
+
+      <EmailGenerationDialog 
+        isOpen={!!generationStep} 
+        currentStep={generationStep || 'user-info'} 
       />
 
       <style jsx global>{`

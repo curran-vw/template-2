@@ -12,6 +12,7 @@ interface EmailGeneratorProps {
     additionalContext?: string
   }
   agentId?: string
+  onStepChange?: (step: 'user-info' | 'business-info' | 'email-body' | 'subject-line') => void
 }
 
 export function useEmailGenerator() {
@@ -19,10 +20,26 @@ export function useEmailGenerator() {
   const { workspace } = useWorkspace()
   const { toast } = useToast()
 
-  const generateEmail = async ({ signupInfo, directive, businessContext, agentId }: EmailGeneratorProps) => {
+  const generateEmail = async ({ 
+    signupInfo, 
+    directive, 
+    businessContext, 
+    agentId,
+    onStepChange 
+  }: EmailGeneratorProps) => {
     setIsGenerating(true)
 
     try {
+      // Create EventSource for progress updates
+      const eventSource = new EventSource(`/api/generate-email/progress?id=${Math.random()}`)
+      
+      eventSource.onmessage = (event) => {
+        const data = JSON.parse(event.data)
+        if (data.step) {
+          onStepChange?.(data.step)
+        }
+      }
+
       const response = await fetch('/api/generate-email', {
         method: 'POST',
         headers: {
@@ -36,6 +53,9 @@ export function useEmailGenerator() {
           agentId
         })
       })
+
+      // Close the event source
+      eventSource.close()
 
       if (!response.ok) {
         const error = await response.json()
