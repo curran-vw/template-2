@@ -193,8 +193,8 @@ export async function POST(req: Request) {
             model: 'anthropic/claude-3.5-sonnet',
             messages: [{
               role: 'user',
-              content: `Write a short, engaging email subject line for a welcome email to a new signup. 
-              Make it personal and inviting. Do not use placeholders. 
+              content: `Write a short, email subject line for a personalized email to a new lead.
+              Make it personal and seem like it is just a casual email from someone they know. Do not use placeholders. Do not put "Subject: " before the subject line. Just write the subject line and that's it.
               Context about them: ${userInfo}`
             }]
           })
