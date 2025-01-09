@@ -34,6 +34,8 @@ import { useToast } from '@/app/components/common/use-toast'
 import { ConfirmDialog } from '@/app/components/common/confirm-dialog'
 import { cn } from "@/lib/utils"
 import { Tooltip } from "@/app/components/common/tooltip"
+import { BusinessContext } from '@/app/components/agent-specific/welcome-agent/business-context'
+import { useEmailGenerator } from '@/app/lib/hooks/useEmailGenerator'
 
 const presetDirectives = [
   { value: "industry-expert", label: "Position yourself as an industry expert", content: "Position yourself as an industry expert, sharing specific insights about challenges their competitors are facing." },
@@ -55,7 +57,6 @@ export default function WelcomeAgentNew() {
   const [signupInfo, setSignupInfo] = useState("Name: Curran Van Waarde\nEmail: Curran@Agentfolio.ai\nWebsite: Agentfolio.ai\nRole: Founder")
   const [directive, setDirective] = useState("")
   const [selectedDirective, setSelectedDirective] = useState("")
-  const [isGenerating, setIsGenerating] = useState(false)
   const [agentName, setAgentName] = useState("Custom Welcome Agent")
   const [isEditingName, setIsEditingName] = useState(false)
   const [emailDetails, setEmailDetails] = useState({ to: 'recipient@example.com', subject: 'Welcome Subject', body: 'Your personalized email will appear here after generation.' })
@@ -77,12 +78,15 @@ export default function WelcomeAgentNew() {
     name?: string;
     emailPurpose?: string;
     businessPurpose?: string;
+    businessWebsite?: string;
   }>({})
   const [openTooltips, setOpenTooltips] = useState<{
     name?: boolean;
     emailPurpose?: boolean;
     businessPurpose?: boolean;
+    businessWebsite?: boolean;
   }>({})
+  const [websiteSummary, setWebsiteSummary] = useState<string>('')
 
   // Track initial values
   const [initialValues, setInitialValues] = useState({
@@ -91,6 +95,8 @@ export default function WelcomeAgentNew() {
     selectedDirective: "",
     businessInfo: { website: '', purpose: '', context: '' }
   })
+
+  const { generateEmail, isGenerating } = useEmailGenerator()
 
   // Check if current values are different from initial values
   const checkForChanges = useCallback(() => {
@@ -143,6 +149,9 @@ export default function WelcomeAgentNew() {
           purpose: agent.businessContext.purpose,
           context: agent.businessContext.additionalContext || ''
         })
+        if (agent.businessContext.websiteSummary) {
+          setWebsiteSummary(agent.businessContext.websiteSummary)
+        }
         setShowAdditionalContext(!!agent.businessContext.additionalContext)
         
         if (agent.configuration) {
@@ -236,32 +245,68 @@ export default function WelcomeAgentNew() {
   }
 
   const handleTest = () => {
+    // Validate required fields
+    const errors: typeof validationErrors = {}
+
+    if (!directive.trim()) {
+      errors.emailPurpose = "AI directive is required"
+    }
+
+    if (!businessInfo.purpose.trim()) {
+      errors.businessPurpose = "Sign up purpose is required"
+    }
+
+    if (!businessInfo.website.trim() && !isCrawled) {
+      errors.businessWebsite = "Please attempt to crawl your website"
+    }
+
+    if (Object.keys(errors).length > 0) {
+      // Open the collapsed sections if they contain errors
+      if (errors.emailPurpose) {
+        setIsEmailPurposeOpen(true)
+      }
+      if (errors.businessPurpose || errors.businessWebsite) {
+        setIsBusinessContextOpen(true)
+      }
+
+      setValidationErrors(errors)
+      setOpenTooltips(
+        Object.keys(errors).reduce((acc, key) => ({
+          ...acc,
+          [key]: true
+        }), {})
+      )
+
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields before generating email",
+        variant: "destructive"
+      })
+      return
+    }
+
     setIsSignupInfoDialogOpen(true)
   }
 
   const generateEmailPreview = async () => {
-    setIsGenerating(true)
     setIsSignupInfoDialogOpen(false)
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    setEmailDetails({
-      to: 'john@example.com',
-      subject: 'Welcome to Our Platform - Let\'s Get Started!',
-      body: `Hi John,
 
-I noticed you recently signed up for [Product Name] and wanted to personally welcome you to our community. I'm excited to see what you'll achieve with our platform!
-
-I saw that you're the CEO at Acme Inc. We've helped several companies in your industry streamline their workflows and achieve remarkable results. For example, one of our clients saw a 40% increase in productivity within the first month.
-
-Would you be interested in a quick 15-minute call to discuss how we can help Acme Inc specifically? I'd love to learn more about your goals and show you some features that would be particularly valuable for your team.
-
-Looking forward to connecting!
-
-Best regards,
-Sarah`
+    const email = await generateEmail({
+      signupInfo,
+      directive,
+      businessContext: {
+        website: businessInfo.website,
+        purpose: businessInfo.purpose,
+        websiteSummary,
+        additionalContext: businessInfo.context
+      },
+      agentId: editId
     })
-    setHasTestedAgent(true)
-    setIsGenerating(false)
+
+    if (email) {
+      setEmailDetails(email)
+      setHasTestedAgent(true)
+    }
   }
 
   const handleGetEmail = () => {
@@ -347,7 +392,8 @@ Sarah`
         businessContext: {
           website: businessInfo.website.trim(),
           purpose: businessInfo.purpose.trim(),
-          ...(showAdditionalContext && businessInfo.context.trim() ? {
+          websiteSummary: websiteSummary,
+          ...(businessInfo.context?.trim() ? {
             additionalContext: businessInfo.context.trim()
           } : {})
         },
@@ -564,75 +610,17 @@ Sarah`
             >
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="business-website" className="text-sm font-medium">Your Website</Label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Input 
-                      id="business-website"
-                      placeholder="e.g., www.yourcompany.com"
-                      value={businessInfo.website}
-                      onChange={(e) => setBusinessInfo(prev => ({ ...prev, website: e.target.value }))}
-                      className="flex-grow"
-                    />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className={`flex items-center gap-1 whitespace-nowrap ${isCrawled ? 'bg-green-100 text-green-700' : ''}`}
-                      onClick={() => setIsCrawled(true)}
-                    >
-                      {isCrawled ? (
-                        <>
-                          <Check className="w-4 h-4" />
-                          Crawled
-                        </>
-                      ) : (
-                        'Crawl Page'
-                      )}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    The agent will visit this page to learn more about your business.
-                  </p>
-                </div>
-
-                <div>
-                  <Label htmlFor="signup-purpose" className="text-sm font-medium">What are people signing up for?</Label>
-                  <Tooltip 
-                    content={validationErrors.businessPurpose} 
-                    open={openTooltips.businessPurpose}
-                    onOpenChange={(open) => setOpenTooltips(prev => ({ ...prev, businessPurpose: open }))}
-                  >
-                    <Textarea 
-                      id="signup-purpose"
-                      placeholder="Briefly explain exactly what people will be signing up for"
-                      value={businessInfo.purpose}
-                      onChange={(e) => handleBusinessPurposeChange(e.target.value)}
-                      className={cn(
-                        validationErrors.businessPurpose && "border-red-500 focus-visible:ring-red-500"
-                      )}
-                    />
-                  </Tooltip>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center">
-                    <Checkbox
-                      id="show-additional-context"
-                      checked={showAdditionalContext}
-                      onCheckedChange={(checked) => setShowAdditionalContext(checked === true)}
-                    />
-                    <Label htmlFor="show-additional-context" className="text-sm font-medium ml-2">
-                      Add additional context
-                    </Label>
-                  </div>
-                  {showAdditionalContext && (
-                    <Textarea 
-                      id="additional-context"
-                      placeholder="Any other relevant information about your business"
-                      value={businessInfo.context}
-                      onChange={(e) => setBusinessInfo(prev => ({ ...prev, context: e.target.value }))}
-                      className="mt-1"
-                    />
-                  )}
+                  <BusinessContext
+                    website={businessInfo.website}
+                    purpose={businessInfo.purpose}
+                    additionalContext={businessInfo.context}
+                    websiteSummary={websiteSummary}
+                    onWebsiteChange={(value) => setBusinessInfo(prev => ({ ...prev, website: value }))}
+                    onPurposeChange={(value) => setBusinessInfo(prev => ({ ...prev, purpose: value }))}
+                    onAdditionalContextChange={(value) => setBusinessInfo(prev => ({ ...prev, context: value }))}
+                    onWebsiteSummaryChange={(summary) => setWebsiteSummary(summary)}
+                    agentId={editId}
+                  />
                 </div>
               </div>
             </CollapsibleCard>
