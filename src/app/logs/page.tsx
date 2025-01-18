@@ -21,6 +21,13 @@ import { Button } from "@/app/components/common/button"
 import { useToast } from "@/app/components/common/use-toast"
 import { onSnapshot, query, collection, orderBy, limit } from 'firebase/firestore'
 import { db } from '@/lib/firebase/firebase'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/app/components/common/alert-dialog"
+import { X } from "lucide-react"
 
 type LogType = 'api' | 'crawl' | 'email' | 'all'
 
@@ -37,6 +44,9 @@ export default function LogsPage() {
   const [logType, setLogType] = useState<LogType>('all')
   const [logs, setLogs] = useState<any[]>([])
   const { toast } = useToast()
+  const [isResponseOpen, setIsResponseOpen] = useState(false)
+  const [selectedResponse, setSelectedResponse] = useState<string | null>(null)
+  const [selectedLog, setSelectedLog] = useState<Log | null>(null)
 
   useEffect(() => {
     const q = query(
@@ -125,10 +135,9 @@ export default function LogsPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => {
-                            toast({
-                              title: "Response Details",
-                              description: log.response,
-                            })
+                            setSelectedLog(log)
+                            setSelectedResponse(log.response)
+                            setIsResponseOpen(true)
                           }}
                         >
                           View Response
@@ -142,6 +151,60 @@ export default function LogsPage() {
           </Table>
         </div>
       </div>
+      <AlertDialog open={isResponseOpen} onOpenChange={setIsResponseOpen}>
+        <AlertDialogContent className="max-w-2xl">
+          <AlertDialogHeader className="flex flex-row items-start justify-between">
+            <div>
+              <AlertDialogTitle>Response Details</AlertDialogTitle>
+              {selectedLog && (
+                <div className="flex flex-col gap-1 mt-1">
+                  <div className="text-sm text-gray-500">
+                    {new Date(selectedLog.timestamp).toLocaleString()}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium capitalize">{selectedLog.type}</span>
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                      selectedLog.status === 'success' ? 'bg-green-50 text-green-700' : 
+                      selectedLog.status === 'pending' ? 'bg-yellow-50 text-yellow-700' :
+                      'bg-red-50 text-red-700'
+                    }`}>
+                      {selectedLog.status}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0"
+              onClick={() => setIsResponseOpen(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </AlertDialogHeader>
+          
+          {selectedLog && (
+            <>
+              <div className="border-t border-gray-100 my-4" />
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900 mb-1">Details</h3>
+                  <p className="text-sm text-gray-600">{selectedLog.details}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900 mb-1">Response</h3>
+                  <div className="max-h-[300px] overflow-y-auto">
+                    <div className="bg-gray-50 rounded-lg p-4 font-mono text-sm text-gray-800 whitespace-pre-wrap">
+                      {selectedResponse}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 } 

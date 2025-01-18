@@ -207,7 +207,7 @@ export const welcomeAgentUtils = {
           'X-Title': 'Agentfolio'
         },
         body: JSON.stringify({
-          model: 'anthropic/claude-3-sonnet',
+          model: 'anthropic/claude-3.5-sonnet',
           messages: [{
             role: 'user',
             content: `Write an email subject line for this email below. 
