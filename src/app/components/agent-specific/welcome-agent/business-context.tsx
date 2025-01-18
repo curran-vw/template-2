@@ -76,7 +76,8 @@ export function BusinessContext({
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <label className="text-sm font-medium">Website URL</label>
+        <label className="text-sm font-medium">Website URL</label><br></br>
+        <span className="text-xs text-gray-500">We will crawl this website to get more information about your business</span>
         <div className="flex gap-2">
           <Input
             placeholder="https://example.com"
@@ -119,7 +120,7 @@ export function BusinessContext({
 
       <div className="space-y-2">
         <label className="text-sm font-medium">
-          What are people signing up for? *
+          What are people signing up for?
         </label>
         <Textarea
           placeholder="Describe what users are signing up for (e.g., 'Our monthly newsletter about AI trends')"

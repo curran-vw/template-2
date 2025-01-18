@@ -39,13 +39,41 @@ import { useEmailGenerator } from '@/app/lib/hooks/useEmailGenerator'
 import { EmailGenerationDialog } from '@/app/components/agent-specific/welcome-agent/email-generation-dialog'
 
 const presetDirectives = [
-  { value: "industry-expert", label: "Position yourself as an industry expert", content: "Position yourself as an industry expert, sharing specific insights about challenges their competitors are facing." },
-  { value: "simple-custom-welcome", label: "Simple customized welcome email", content: "Send a simple customized welcome email that shows you looked up their business, how they're a perfect fit, and benefits they'll get specifically based on their business." },
-  { value: "success-story", label: "Share a success story", content: "Write an email that includes a success story from a similar company in the recipient's industry." },
-  { value: "book-call", label: "Suggest a quick call", content: "Suggest a quick call to discuss how we've helped similar companies in the recipient's industry." },
-  { value: "product-demo", label: "Invite to product demo", content: "Invite the recipient to see a personalized demo of our solution, highlighting specific features that would benefit their role." },
-  { value: "custom-upsell", label: "Upsell based on an ROI benefit", content: "Introduce premium features relevant to the recipient's industry, focusing on ROI and specific benefits for their role." },
-  { value: "fully-custom", label: "Custom", content: " " },
+  { 
+    value: "industry-expert", 
+    label: "Position yourself as an industry expert", 
+    content: "Share industry insights about their competitors' challenges and invite them to schedule a consultation call." 
+  },
+  { 
+    value: "simple-custom-welcome", 
+    label: "Simple customized welcome email", 
+    content: "Welcome them with personalized insights about their business fit and benefits. End with an invitation to an onboarding call." 
+  },
+  { 
+    value: "success-story", 
+    label: "Share a success story", 
+    content: "Share a relevant success story from their industry and invite them to discuss achieving similar results." 
+  },
+  { 
+    value: "book-call", 
+    label: "Suggest a quick call", 
+    content: "Highlight how we help similar companies and invite them to book a 15-minute intro call." 
+  },
+  { 
+    value: "product-demo", 
+    label: "Invite to product demo", 
+    content: "Highlight relevant features for their role and invite them to schedule a personalized demo this week." 
+  },
+  { 
+    value: "custom-upsell", 
+    label: "Upsell based on an ROI benefit", 
+    content: "Present relevant premium features with ROI benefits and invite them to upgrade or discuss options." 
+  },
+  { 
+    value: "fully-custom", 
+    label: "Custom", 
+    content: " " 
+  },
 ]
 
 export default function WelcomeAgentNew() {
@@ -599,8 +627,8 @@ export default function WelcomeAgentNew() {
                       )}
                     />
                   </Tooltip>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Refine the AI's approach to writing the welcome email.
+                  <p className="text-xs text-gray-500 mt-1">
+                    Refine what the AI should do and include call-to-action.
                   </p>
                 </div>
               </div>
