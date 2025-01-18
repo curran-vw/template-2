@@ -2,7 +2,7 @@
 
 import './globals.css';
 import { DM_Sans } from 'next/font/google';
-import { AuthProvider } from '@/lib/contexts/AuthContext';
+import { AuthProvider } from '@/app/lib/contexts/AuthContext';
 import { LayoutProvider } from './components/common/LayoutProvider';
 import { ToastProvider } from '@/app/components/common/toast-context';
 import { usePathname } from 'next/navigation';

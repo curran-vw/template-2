@@ -7,7 +7,7 @@ import { Label } from "@/app/components/common/label"
 import { Textarea } from "@/app/components/common/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/common/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/common/card"
-import { ArrowLeft, Save, Sparkles, Pencil, Check, Settings, Mail, Play, Copy, X, ChevronDown } from 'lucide-react'
+import { ArrowLeft, Save, Sparkles, Pencil, Check, Settings, Mail, Play, Copy, X, ChevronDown, Trash2, Loader2 } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { EmailPreview } from '@/app/components/agent-specific/welcome-agent/email-preview'
 import { CollapsibleCard } from '@/app/components/common/collapsible-card'
@@ -37,6 +37,9 @@ import { Tooltip } from "@/app/components/common/tooltip"
 import { BusinessContext } from '@/app/components/agent-specific/welcome-agent/business-context'
 import { useEmailGenerator } from '@/app/lib/hooks/useEmailGenerator'
 import { EmailGenerationDialog } from '@/app/components/agent-specific/welcome-agent/email-generation-dialog'
+import { ConnectGmail } from "@/components/common/agent-specific/welcome-agent/connect-gmail"
+import { useAuth } from '@/lib/hooks/useAuth'
+import { gmailUtils } from '@/app/lib/firebase/gmailUtils'
 
 const presetDirectives = [
   { 
@@ -88,6 +91,7 @@ export default function WelcomeAgentNew() {
   const shouldOpenConfigure = searchParams.get('configure') === 'true'
   const { workspace } = useWorkspace()
   const { toast } = useToast()
+  const { user, isReady } = useAuth()
   const [signupInfo, setSignupInfo] = useState("Name: Curran Van Waarde\nEmail: Curran@Agentfolio.ai\nWebsite: Agentfolio.ai\nRole: Founder")
   const [directive, setDirective] = useState("")
   const [selectedDirective, setSelectedDirective] = useState("")
@@ -125,6 +129,10 @@ export default function WelcomeAgentNew() {
   const [isEmailAccountOpen, setIsEmailAccountOpen] = useState(true)
   const [isNewContactsOpen, setIsNewContactsOpen] = useState(false)
   const [isAdditionalSettingsOpen, setIsAdditionalSettingsOpen] = useState(false)
+  const [connectedEmail, setConnectedEmail] = useState<string | null>(null)
+  const [connectedAccounts, setConnectedAccounts] = useState<any[]>([])
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState(false)
+  const [isTestingEmail, setIsTestingEmail] = useState<string | null>(null)
 
   // Track initial values
   const [initialValues, setInitialValues] = useState({
@@ -235,6 +243,38 @@ export default function WelcomeAgentNew() {
       setIsAdditionalSettingsOpen(false)
     }
   }, [shouldOpenConfigure])
+
+  useEffect(() => {
+    const loadConnectedAccounts = async () => {
+      if (!isReady || !workspace?.id) return
+
+      setIsLoadingAccounts(true)
+      try {
+        console.log('Loading Gmail connections...')
+        const connections = await gmailUtils.getWorkspaceConnections(workspace.id)
+        console.log('Loaded connections:', connections)
+        setConnectedAccounts(connections)
+        
+        if (selectedEmailAccount) {
+          const accountExists = connections.some(conn => conn.email === selectedEmailAccount)
+          if (!accountExists) {
+            setSelectedEmailAccount('')
+          }
+        }
+      } catch (error) {
+        console.error('Error loading Gmail connections:', error)
+        toast({
+          title: "Error",
+          description: "Failed to load connected Gmail accounts",
+          variant: "destructive"
+        })
+      } finally {
+        setIsLoadingAccounts(false)
+      }
+    }
+
+    loadConnectedAccounts()
+  }, [isReady, workspace?.id, selectedEmailAccount])
 
   const handleNavigateAway = (action: () => void) => {
     if (hasUnsavedChanges) {
@@ -510,6 +550,128 @@ export default function WelcomeAgentNew() {
     handleSave('draft')
   }
 
+  const handleGmailConnected = async (email: string, name: string, tokens: any) => {
+    console.log('Gmail connected callback received:', { email, name })
+    
+    // Wait for auth to be ready
+    if (!isReady) {
+      console.log('Waiting for auth to be ready...')
+      return
+    }
+
+    if (!workspace?.id) {
+      console.error('No workspace found')
+      toast({
+        title: "Error",
+        description: "No workspace found",
+        variant: "destructive"
+      })
+      return
+    }
+
+    if (!user?.uid) {
+      console.error('No authenticated user found')
+      toast({
+        title: "Error",
+        description: "Please sign in to connect Gmail",
+        variant: "destructive"
+      })
+      return
+    }
+
+    try {
+      console.log('Saving Gmail connection...', {
+        workspaceId: workspace.id,
+        userId: user.uid,
+        email,
+        name
+      })
+
+      const connectionId = await gmailUtils.saveGmailConnection(
+        workspace.id,
+        user.uid,
+        email,
+        name,
+        {
+          ...tokens,
+          expiry_date: Date.now() + (tokens.expires_in * 1000)
+        }
+      )
+
+      console.log('Gmail connection saved:', connectionId)
+
+      // Reload connected accounts
+      const connections = await gmailUtils.getWorkspaceConnections(workspace.id)
+      console.log('Loaded connections:', connections)
+      setConnectedAccounts(connections)
+      
+      setSelectedEmailAccount(email)
+      
+      toast({
+        title: "Success",
+        description: "Gmail account connected successfully",
+      })
+    } catch (error) {
+      console.error('Error saving Gmail connection:', error)
+      toast({
+        title: "Error",
+        description: "Failed to save Gmail connection",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleRemoveGmailConnection = async (connectionId: string) => {
+    try {
+      await gmailUtils.removeConnection(connectionId)
+      const connections = await gmailUtils.getWorkspaceConnections(workspace!.id)
+      setConnectedAccounts(connections)
+      
+      if (connections.length === 0) {
+        setSelectedEmailAccount('')
+      }
+      
+      toast({
+        title: "Success",
+        description: "Gmail account removed successfully",
+      })
+    } catch (error) {
+      console.error('Error removing Gmail connection:', error)
+      toast({
+        title: "Error",
+        description: "Failed to remove Gmail account",
+        variant: "destructive"
+      })
+    }
+  }
+
+  // Add useEffect to monitor auth state
+  useEffect(() => {
+    if (isReady && user) {
+      console.log('Auth ready, user:', user.uid)
+    }
+  }, [isReady, user])
+
+  const handleTestEmail = async (connectionId: string) => {
+    setIsTestingEmail(connectionId)
+    try {
+      await gmailUtils.testEmailConnection(connectionId)
+      toast({
+        title: "Success",
+        description: "Test email sent successfully",
+      })
+    } catch (error) {
+      console.error('Test email failed:', error)
+      toast({
+        title: "Error",
+        description: "Failed to send test email",
+        variant: "destructive"
+      })
+    } finally {
+      setIsTestingEmail(null)
+    }
+  }
+
   return (
     <div className="min-h-screen w-full bg-zinc-900 flex items-center justify-center p-4">
       <div className="w-full max-w-7xl bg-white rounded-xl overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 2rem)' }}>
@@ -751,18 +913,84 @@ export default function WelcomeAgentNew() {
                   <p className="text-sm text-muted-foreground">
                     Connect your email account to send welcome emails automatically.
                   </p>
-                  <Select value={selectedEmailAccount} onValueChange={setSelectedEmailAccount}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select email account" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="email1">email1@example.com</SelectItem>
-                      <SelectItem value="email2">email2@example.com</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button className="w-full">
-                    Connect New Account
-                  </Button>
+                  
+                  {isLoadingAccounts ? (
+                    <div className="py-4 text-center text-sm text-muted-foreground">
+                      <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2" />
+                      Loading accounts...
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-2">
+                        {connectedAccounts.map(account => (
+                          <div 
+                            key={account.id} 
+                            className={cn(
+                              "flex items-center justify-between p-3 rounded-lg border",
+                              selectedEmailAccount === account.email && "bg-gray-50 border-gray-300"
+                            )}
+                          >
+                            <div className="flex items-center gap-3">
+                              <input
+                                type="radio"
+                                id={account.id}
+                                name="emailAccount"
+                                checked={selectedEmailAccount === account.email}
+                                onChange={() => {
+                                  console.log('Selecting email account:', account.email)
+                                  setSelectedEmailAccount(account.email)
+                                }}
+                                className="h-4 w-4 text-primary border-gray-300"
+                              />
+                              <div className="flex flex-col">
+                                <label htmlFor={account.id} className="text-sm font-medium">
+                                  {account.name}
+                                </label>
+                                <span className="text-xs text-gray-500">
+                                  {account.email}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleTestEmail(account.id!)}
+                                disabled={isTestingEmail === account.id}
+                                className="hover:bg-blue-50 hover:text-blue-600"
+                              >
+                                {isTestingEmail === account.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Mail className="h-4 w-4" />
+                                )}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleRemoveGmailConnection(account.id!)}
+                                className="hover:bg-red-50 hover:text-red-600"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {connectedAccounts.length === 0 && (
+                        <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center">
+                          <Mail className="h-8 w-8 text-gray-400 mx-auto mb-3" />
+                          <p className="text-sm text-gray-600 mb-1">
+                            No email accounts connected yet
+                          </p>
+                          
+                        </div>
+                      )}
+                      
+                      <ConnectGmail onSuccess={handleGmailConnected} />
+                    </>
+                  )}
                 </div>
               </CollapsibleCard>
 
