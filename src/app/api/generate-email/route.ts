@@ -136,7 +136,7 @@ export async function POST(req: Request) {
             messages: [{
               role: 'user',
               content: `We are writing the body of a personalized email today to a new lead that just signed up 
-              (keep it max of 3 paragraphs and MAX 1-2 sentences per paragraph). 
+              (keep it max of 2-3 paragraphs and MAX 1-2 sentences per paragraph). 
               Do not include the subject line. 
               Make it read like a human sent it after looking up their company and make it clear we know what they do without jargon.  
               Make it pretty casual and welcoming with an 8th grade reading level. 

@@ -1,6 +1,7 @@
 import { db } from '@/app/lib/firebase/firebase'
 import { collection, doc, setDoc, getDoc, getDocs, query, where, deleteDoc } from 'firebase/firestore'
 import { WelcomeAgent } from '../types/welcome-agent'
+import { gmailUtils } from '@/app/lib/firebase/gmailUtils'
 
 const COLLECTION_NAME = 'welcomeAgents'
 
@@ -93,6 +94,10 @@ export const welcomeAgentUtils = {
     })
 
     try {
+      // Get the Gmail connection to get the sender's name
+      const gmailConnection = await gmailUtils.getConnectionByEmail(agent.configuration?.emailAccount || '')
+      const senderName = gmailConnection?.name || agent.configuration?.emailAccount || 'the team'
+
       // Run first two prompts in parallel for performance
       const [userInfoResponse, businessInfoResponse] = await Promise.all([
         // First Prompt - User Info
@@ -166,21 +171,15 @@ export const welcomeAgentUtils = {
           model: 'anthropic/claude-3.5-sonnet',
           messages: [{
             role: 'user',
-            content: `Write the body of a personalized email using HTML formatting. Format requirements:            Make it read like a human sent it after looking up their company and make it clear we know what they do without jargon.  
-            - Use <p> tags for each paragraph
-            - Keep it to 1-3 paragraphs
-            - MAX 1-2 sentences per paragraph
-            - If not sure about whether its actually the person or business, just make it generic
-            - Add <br> tags for line breaks where natural
-            - Do not include a subject line
-            - Make it read like a human sent it
-            - Make it clear we know what they do without jargon
-            - Keep it casual and welcoming (8th grade reading level)
-            - If no specific info available, make it generic (don't mention it's a template)
-            - Don't use placeholders like [calendar link]
-            - Address by first name if available (general greeting if no name)
-            - Add a line break before the signature
-            - Sign off from ${agent.configuration?.emailAccount || 'the team'}
+            content: `We are writing the HTML body using <p> and <br> tags of a personalized email today to a new lead that just signed up 
+              (keep it max of 2-3 paragraphs and MAX 1-2 sentences per paragraph). 
+              Do not include the subject line. 
+              Make it read like a human sent it after looking up their company and make it clear we know what they do without jargon.  
+              Make it pretty casual and welcoming with an 8th grade reading level. 
+              If business info is unclear, keep it generic to the industry; if user info is clear, make it more specific.
+              Don't use placeholders like [calendar link] or make note that it's a template.
+              Address the person by first name if available (but just make it general if no name is provided). 
+              Sign off with this exact name: ${senderName}
 
             Here's what you should do in this email: ${agent.emailPurpose?.directive || ''}  
 
