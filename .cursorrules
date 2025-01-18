@@ -12,5 +12,6 @@ There are some pre-configured APIs in this template that can be used but only if
   - In src/lib/contexts there is an AuthContext.tsx file that has user authentication with Firebase set up with the onAuthStateChanged listener.
   - In src/lib/hooks there is a useAuth.ts hook
 
-  ALWAYS MAKE SURE TO GIVE YOUR ANSWERS BACK IN A FULL CODE BLOCK
-  
+Other important things:
+- When making changes, do it without breaking existing functionality in what we've already built
+- Always make sure to give your answers in a full code block

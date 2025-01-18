@@ -42,12 +42,12 @@ const presetDirectives = [
   { 
     value: "industry-expert", 
     label: "Position yourself as an industry expert", 
-    content: "Share industry insights about their competitors' challenges and invite them to schedule a consultation call." 
+    content: "Share industry insights about their competitors' challenges and invite them to a call to show what we've done for companies similar to theirs." 
   },
   { 
     value: "simple-custom-welcome", 
     label: "Simple customized welcome email", 
-    content: "Welcome them with personalized insights about their business fit and benefits. End with an invitation to an onboarding call." 
+    content: "Welcome them personalized insights about their business fit and benefits. End with an invitation to an onboarding call." 
   },
   { 
     value: "success-story", 
@@ -66,8 +66,13 @@ const presetDirectives = [
   },
   { 
     value: "custom-upsell", 
-    label: "Upsell based on an ROI benefit", 
-    content: "Present relevant premium features with ROI benefits and invite them to upgrade or discuss options." 
+    label: "Upsell with a custom loom video", 
+    content: "Highlight ROI-focused features and ask if they'd like a Loom video to see the potential impact it could create for their business." 
+  },
+  {
+    value: "super-short",
+    label: "Super short email",
+    content: "Generate a super-short, personalized email (1-2 sentences and only 1 paragraph). End with this exact call to action: 'Want me to send over some more info?'."
   },
   { 
     value: "fully-custom", 
@@ -117,6 +122,9 @@ export default function WelcomeAgentNew() {
   }>({})
   const [websiteSummary, setWebsiteSummary] = useState<string>('')
   const [generationStep, setGenerationStep] = useState<'user-info' | 'business-info' | 'email-body' | 'subject-line' | null>(null)
+  const [isEmailAccountOpen, setIsEmailAccountOpen] = useState(true)
+  const [isNewContactsOpen, setIsNewContactsOpen] = useState(false)
+  const [isAdditionalSettingsOpen, setIsAdditionalSettingsOpen] = useState(false)
 
   // Track initial values
   const [initialValues, setInitialValues] = useState({
@@ -222,6 +230,9 @@ export default function WelcomeAgentNew() {
   useEffect(() => {
     if (shouldOpenConfigure) {
       setIsConfigureDrawerOpen(true)
+      setIsEmailAccountOpen(true)
+      setIsNewContactsOpen(false)
+      setIsAdditionalSettingsOpen(false)
     }
   }, [shouldOpenConfigure])
 
@@ -251,10 +262,6 @@ export default function WelcomeAgentNew() {
   }
 
   const handleDirectiveChange = (value: string) => {
-    if (value.trim()) {
-      setValidationErrors(prev => ({ ...prev, emailPurpose: undefined }))
-      setOpenTooltips(prev => ({ ...prev, emailPurpose: false }))
-    }
     setDirective(value)
   }
 
@@ -280,32 +287,22 @@ export default function WelcomeAgentNew() {
 
     if (!directive.trim()) {
       errors.emailPurpose = "AI directive is required"
+      setIsEmailPurposeOpen(true)
     }
 
     if (!businessInfo.purpose.trim()) {
       errors.businessPurpose = "Sign up purpose is required"
-    }
-
-    if (!businessInfo.website.trim() && !isCrawled) {
-      errors.businessWebsite = "Please attempt to crawl your website"
+      setIsBusinessContextOpen(true)
     }
 
     if (Object.keys(errors).length > 0) {
-      // Open the collapsed sections if they contain errors
-      if (errors.emailPurpose) {
-        setIsEmailPurposeOpen(true)
-      }
-      if (errors.businessPurpose || errors.businessWebsite) {
-        setIsBusinessContextOpen(true)
-      }
-
       setValidationErrors(errors)
-      setOpenTooltips(
-        Object.keys(errors).reduce((acc, key) => ({
-          ...acc,
-          [key]: true
-        }), {})
-      )
+      // Set tooltips to true and don't automatically close them
+      setOpenTooltips(prev => ({
+        ...prev,
+        emailPurpose: errors.emailPurpose ? true : prev.emailPurpose,
+        businessPurpose: errors.businessPurpose ? true : prev.businessPurpose
+      }))
 
       toast({
         title: "Validation Error",
@@ -614,7 +611,12 @@ export default function WelcomeAgentNew() {
                   <Tooltip 
                     content={validationErrors.emailPurpose} 
                     open={openTooltips.emailPurpose}
-                    onOpenChange={(open) => setOpenTooltips(prev => ({ ...prev, emailPurpose: open }))}
+                    onOpenChange={(open) => {
+                      // Only allow closing via the X button
+                      if (!open) {
+                        setOpenTooltips(prev => ({ ...prev, emailPurpose: false }))
+                      }
+                    }}
                   >
                     <Textarea
                       id="ai-directive"
@@ -650,10 +652,20 @@ export default function WelcomeAgentNew() {
                     additionalContext={businessInfo.context}
                     websiteSummary={websiteSummary}
                     onWebsiteChange={(value) => setBusinessInfo(prev => ({ ...prev, website: value }))}
-                    onPurposeChange={(value) => setBusinessInfo(prev => ({ ...prev, purpose: value }))}
+                    onPurposeChange={(value) => {
+                      setBusinessInfo(prev => ({ ...prev, purpose: value }))
+                    }}
                     onAdditionalContextChange={(value) => setBusinessInfo(prev => ({ ...prev, context: value }))}
                     onWebsiteSummaryChange={(summary) => setWebsiteSummary(summary)}
                     agentId={editId}
+                    validationError={validationErrors.businessPurpose}
+                    showTooltip={openTooltips.businessPurpose}
+                    onTooltipOpenChange={(open) => {
+                      // Only allow closing via the X button
+                      if (!open) {
+                        setOpenTooltips(prev => ({ ...prev, businessPurpose: false }))
+                      }
+                    }}
                   />
                 </div>
               </div>
@@ -721,65 +733,54 @@ export default function WelcomeAgentNew() {
       {/* Configuration Drawer */}
       {isConfigureDrawerOpen && (
         <>
-          <div
-            className="fixed inset-0 bg-black/30 z-50"
-            onClick={() => setIsConfigureDrawerOpen(false)}
-          />
-          <div className="fixed inset-y-0 right-0 w-[450px] bg-white shadow-lg z-50 overflow-y-auto transition-transform duration-300 ease-in-out transform translate-x-0">
-            <div className="p-6 space-y-6">
-              <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-semibold">Configure Welcome Agent</h2>
-                <Button variant="ghost" size="icon" onClick={() => setIsConfigureDrawerOpen(false)}>
-                  <X className="h-6 w-6" />
-                </Button>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Set up your email account, contact integration, and additional settings.
-              </p>
-              <Separator />
-              <div className="space-y-6">
+          <div className="fixed inset-0 bg-black/20" onClick={() => setIsConfigureDrawerOpen(false)} />
+          <div className="fixed right-0 top-0 h-full w-[400px] bg-white shadow-lg z-50 flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h2 className="text-lg font-semibold">Configure Agent</h2>
+              <Button variant="ghost" size="icon" onClick={() => setIsConfigureDrawerOpen(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              <CollapsibleCard
+                title="Connect Email Account"
+                isOpen={isEmailAccountOpen}
+                onToggle={() => setIsEmailAccountOpen(prev => !prev)}
+              >
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Connect Email Account</h3>
                   <p className="text-sm text-muted-foreground">
-                    Select or add the email account to send welcome emails from.
+                    Connect your email account to send welcome emails automatically.
                   </p>
-                  <RadioGroup value={selectedEmailAccount} onValueChange={setSelectedEmailAccount}>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="john@example.com" id="john@example.com" />
-                      <Label htmlFor="john@example.com">john@example.com</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="jane@example.com" id="jane@example.com" />
-                      <Label htmlFor="jane@example.com">jane@example.com</Label>
-                    </div>
-                  </RadioGroup>
-                  <Button variant="outline" className="mt-2">
-                    <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                      <path d="M1 1h22v22H1z" fill="none"/>
-                    </svg>
-                    Add New Google Account
+                  <Select value={selectedEmailAccount} onValueChange={setSelectedEmailAccount}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select email account" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="email1">email1@example.com</SelectItem>
+                      <SelectItem value="email2">email2@example.com</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button className="w-full">
+                    Connect New Account
                   </Button>
                 </div>
-                <Separator />
-                <div className="space-y-6">
-                  <h3 className="text-lg font-semibold">Connect New Contacts</h3>
+              </CollapsibleCard>
+
+              <CollapsibleCard
+                title="Connect New Contacts"
+                isOpen={isNewContactsOpen}
+                onToggle={() => setIsNewContactsOpen(prev => !prev)}
+              >
+                <div className="space-y-4">
                   <p className="text-sm text-muted-foreground">
-                    Set up an email notification for new signups to create personalized welcome emails.
+                    We'll provide you with a unique email address. Add this to your existing signup form as a notification email.
+                    Whenever someone signs up, we'll receive their details and automatically create a personalized welcome email.
                   </p>
                   <Card className="w-full relative">
                     <Badge className="absolute top-4 right-4 px-2 py-1">EASY SETUP</Badge>
                     <CardContent className="pt-6 px-4 sm:px-6">
                       <div className="flex flex-col items-center text-center space-y-4">
                         <Mail className="w-12 h-12 text-primary" />
-                        <h3 className="text-lg font-semibold">Add Our Email to Your Signup Form</h3>
-                        <p className="text-sm text-muted-foreground">
-                          We'll provide you with a unique email address. Add this to your existing signup form as a notification email. 
-                          Whenever someone signs up, we'll receive their details and automatically create a personalized welcome email.
-                        </p>
                         <div className="flex justify-center space-x-4 w-full">
                           {notificationEmail ? (
                             <div className="flex items-center justify-center space-x-2">
@@ -805,9 +806,14 @@ export default function WelcomeAgentNew() {
                     </CardContent>
                   </Card>
                 </div>
-                <Separator />
+              </CollapsibleCard>
+
+              <CollapsibleCard
+                title="Additional Settings"
+                isOpen={isAdditionalSettingsOpen}
+                onToggle={() => setIsAdditionalSettingsOpen(prev => !prev)}
+              >
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Additional Settings</h3>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="confident-only">Send only when AI is confident</Label>
@@ -819,7 +825,7 @@ export default function WelcomeAgentNew() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </CollapsibleCard>
             </div>
             <div className="p-6 bg-gray-50 border-t">
               <Button className="w-full" onClick={() => setIsConfigureDrawerOpen(false)}>

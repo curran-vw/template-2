@@ -9,6 +9,7 @@ import { useCrawler } from '@/app/lib/hooks/useCrawler'
 import { Checkbox } from "@/app/components/common/checkbox"
 import { Label } from "@/app/components/common/label"
 import { cn } from "@/lib/utils"
+import { Tooltip } from "@/app/components/common/tooltip"
 
 interface BusinessContextProps {
   website: string
@@ -20,6 +21,9 @@ interface BusinessContextProps {
   onAdditionalContextChange: (value: string) => void
   onWebsiteSummaryChange: (summary: string) => void
   agentId?: string
+  validationError?: string
+  showTooltip?: boolean
+  onTooltipOpenChange?: (open: boolean) => void
 }
 
 export function BusinessContext({
@@ -31,7 +35,10 @@ export function BusinessContext({
   onPurposeChange,
   onAdditionalContextChange,
   onWebsiteSummaryChange,
-  agentId
+  agentId,
+  validationError,
+  showTooltip,
+  onTooltipOpenChange
 }: BusinessContextProps) {
   const { crawlWebsite, isCrawling, crawlError } = useCrawler()
   const [hasCrawled, setHasCrawled] = useState(false)
@@ -122,12 +129,21 @@ export function BusinessContext({
         <label className="text-sm font-medium">
           What are people signing up for?
         </label>
-        <Textarea
-          placeholder="Describe what users are signing up for (e.g., 'Our monthly newsletter about AI trends')"
-          value={purpose}
-          onChange={(e) => onPurposeChange(e.target.value)}
-          className="min-h-[100px]"
-        />
+        <Tooltip 
+          content={validationError} 
+          open={showTooltip}
+          onOpenChange={onTooltipOpenChange}
+        >
+          <Textarea
+            placeholder="Describe what users are signing up for (e.g., 'Our monthly newsletter about AI trends')"
+            value={purpose}
+            onChange={(e) => onPurposeChange(e.target.value)}
+            className={cn(
+              "min-h-[100px]",
+              validationError && "border-red-500 focus-visible:ring-red-500"
+            )}
+          />
+        </Tooltip>
       </div>
 
       <div className="space-y-2">
