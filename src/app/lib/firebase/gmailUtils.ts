@@ -30,21 +30,22 @@ export const gmailUtils = {
     console.log('Starting saveGmailConnection:', { workspaceId, userId, email, name })
     
     try {
-      // Check if connection already exists
-      const existingConnections = await this.getWorkspaceConnections(workspaceId)
-      console.log('Existing connections:', existingConnections)
-      
-      const existing = existingConnections.find(conn => conn.email === email)
-      console.log('Found existing connection:', existing)
-
       const connectionData = {
         email,
         name,
         tokens,
         workspaceId,
         userId,
-        connected_at: Date.now()
+        connected_at: Date.now(),
+        isActive: true
       }
+
+      // Check if connection already exists
+      const existingConnections = await this.getWorkspaceConnections(workspaceId)
+      console.log('Existing connections:', existingConnections)
+      
+      const existing = existingConnections.find(conn => conn.email === email)
+      console.log('Found existing connection:', existing)
 
       let connectionId: string
       
@@ -60,7 +61,10 @@ export const gmailUtils = {
         connectionId = connectionRef.id
       }
 
-      console.log('Connection saved successfully:', connectionId)
+      // Verify the connection was saved
+      const savedConnection = await this.getConnection(connectionId)
+      console.log('Saved connection:', savedConnection)
+
       return connectionId
     } catch (error) {
       console.error('Error in saveGmailConnection:', error)
@@ -93,10 +97,12 @@ export const gmailUtils = {
   },
 
   async refreshTokenIfNeeded(connectionId: string) {
+    console.log('Checking if token needs refresh for connection:', connectionId)
     const connectionRef = doc(db, 'gmail_connections', connectionId)
     const connection = await getDoc(connectionRef)
     
     if (!connection.exists()) {
+      console.error('Gmail connection not found:', connectionId)
       throw new Error('Gmail connection not found')
     }
 
@@ -105,6 +111,7 @@ export const gmailUtils = {
 
     // If token expires in less than 5 minutes, refresh it
     if (Date.now() + 5 * 60 * 1000 >= expiryDate) {
+      console.log('Token needs refresh, refreshing...')
       const response = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
         headers: {
@@ -130,28 +137,50 @@ export const gmailUtils = {
         }
       }, { merge: true })
 
+      console.log('Token refreshed successfully')
       return newTokens.access_token
     }
 
+    console.log('Token still valid, using existing token')
     return data.tokens.access_token
   },
 
   async sendEmail(
-    connectionId: string,
+    senderEmail: string,
     to: string,
     subject: string,
     body: string
   ) {
     try {
-      // Get fresh access token
-      const accessToken = await this.refreshTokenIfNeeded(connectionId)
+      console.log('Attempting to send email:', {
+        from: senderEmail,
+        to,
+        subject
+      })
 
-      // Construct the email in RFC 822 format
+      // First get the Gmail connection for this email
+      const connection = await this.getConnectionByEmail(senderEmail)
+      if (!connection) {
+        const workspaceConnections = await this.getWorkspaceConnections('uIRfO3U9XyCw2eIbeeFb')
+        console.log('Available workspace connections:', workspaceConnections)
+        throw new Error(`No Gmail connection found for ${senderEmail}. Available connections: ${workspaceConnections.map(c => c.email).join(', ')}`)
+      }
+
+      console.log('Using Gmail connection:', {
+        id: connection.id,
+        email: connection.email,
+        name: connection.name
+      })
+
+      // Get fresh access token
+      const accessToken = await this.refreshTokenIfNeeded(connection.id)
+
+      // Construct the email in RFC 822 format with proper From header
       const emailContent = [
         'Content-Type: text/html; charset="UTF-8"',
         'MIME-Version: 1.0',
         `To: ${to}`,
-        'From: me', // Gmail API uses 'me' to represent the authenticated user
+        `From: "${connection.name}" <${connection.email}>`, // Use the sender's name
         `Subject: ${subject}`,
         '',
         body
@@ -163,7 +192,7 @@ export const gmailUtils = {
         .replace(/\//g, '_')
         .replace(/=+$/, '')
 
-      // Send the email via Gmail API
+      // Send the email via Gmail API with delegated permissions
       const response = await fetch(
         'https://gmail.googleapis.com/gmail/v1/users/me/messages/send',
         {
@@ -171,6 +200,7 @@ export const gmailUtils = {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
+            'X-Goog-AuthUser': '0' // Use primary account profile
           },
           body: JSON.stringify({
             raw: encodedEmail
@@ -229,5 +259,37 @@ export const gmailUtils = {
       id: connection.id,
       ...connection.data()
     } as GmailConnection
+  },
+
+  async getConnectionByEmail(email: string): Promise<GmailConnection | null> {
+    console.log('Looking up Gmail connection for:', email)
+    const connectionsRef = collection(db, 'gmail_connections')
+    
+    // Add isActive field if it doesn't exist in the query
+    const q = query(connectionsRef, where('email', '==', email))
+    const snapshot = await getDocs(q)
+    
+    console.log('Query results:', {
+      empty: snapshot.empty,
+      count: snapshot.docs.length,
+      docs: snapshot.docs.map(doc => ({
+        id: doc.id,
+        email: doc.data().email,
+        isActive: doc.data().isActive
+      }))
+    })
+    
+    if (snapshot.empty) {
+      console.log('No Gmail connection found for:', email)
+      return null
+    }
+    
+    const connection = {
+      id: snapshot.docs[0].id,
+      ...snapshot.docs[0].data()
+    } as GmailConnection
+    
+    console.log('Found Gmail connection:', connection)
+    return connection
   }
 } 

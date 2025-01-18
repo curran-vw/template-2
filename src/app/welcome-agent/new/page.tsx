@@ -40,6 +40,7 @@ import { EmailGenerationDialog } from '@/app/components/agent-specific/welcome-a
 import { ConnectGmail } from "@/components/common/agent-specific/welcome-agent/connect-gmail"
 import { useAuth } from '@/lib/hooks/useAuth'
 import { gmailUtils } from '@/app/lib/firebase/gmailUtils'
+import { mailgunUtils } from '@/app/lib/firebase/mailgunUtils'
 
 const presetDirectives = [
   { 
@@ -672,6 +673,34 @@ export default function WelcomeAgentNew() {
     }
   }
 
+  // Add useEffect to generate notification email
+  useEffect(() => {
+    const setupNotificationEmail = async () => {
+      if (!workspace?.id || !editId) return
+      
+      try {
+        // Try to get existing notification email
+        let email = await mailgunUtils.getNotificationEmail(editId)
+        
+        // If none exists, generate new one
+        if (!email) {
+          email = await mailgunUtils.generateNotificationEmail(editId, workspace.id)
+        }
+        
+        setNotificationEmail(mailgunUtils.getFullEmailAddress(email.emailLocalPart))
+      } catch (error) {
+        console.error('Error setting up notification email:', error)
+        toast({
+          title: "Error",
+          description: "Failed to set up notification email",
+          variant: "destructive"
+        })
+      }
+    }
+
+    setupNotificationEmail()
+  }, [workspace?.id, editId])
+
   return (
     <div className="min-h-screen w-full bg-zinc-900 flex items-center justify-center p-4">
       <div className="w-full max-w-7xl bg-white rounded-xl overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 2rem)' }}>
@@ -1004,35 +1033,36 @@ export default function WelcomeAgentNew() {
                     We'll provide you with a unique email address. Add this to your existing signup form as a notification email.
                     Whenever someone signs up, we'll receive their details and automatically create a personalized welcome email.
                   </p>
-                  <Card className="w-full relative">
-                    <Badge className="absolute top-4 right-4 px-2 py-1">EASY SETUP</Badge>
-                    <CardContent className="pt-6 px-4 sm:px-6">
-                      <div className="flex flex-col items-center text-center space-y-4">
-                        <Mail className="w-12 h-12 text-primary" />
-                        <div className="flex justify-center space-x-4 w-full">
-                          {notificationEmail ? (
-                            <div className="flex items-center justify-center space-x-2">
-                              <input 
-                                type="text" 
-                                value={notificationEmail} 
-                                readOnly 
-                                className="px-3 py-2 border rounded-md w-64"
-                              />
-                              <Button variant="outline" onClick={handleCopyEmail}>
-                                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                              </Button>
-                            </div>
-                          ) : (
-                            <Button onClick={handleGetEmail} className="w-48">Get Email Address</Button>
-                          )}
-                          <Button variant="outline" className="flex items-center w-48">
-                            <Play className="w-4 h-4 mr-2" />
-                            See How It Works
+                  
+                  {notificationEmail ? (
+                    <Card className="w-full relative">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium mb-1">Your Notification Email</p>
+                            <p className="text-sm text-muted-foreground break-all">{notificationEmail}</p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              navigator.clipboard.writeText(notificationEmail)
+                              toast({
+                                title: "Copied!",
+                                description: "Email address copied to clipboard",
+                              })
+                            }}
+                          >
+                            <Copy className="h-4 w-4" />
                           </Button>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="text-sm text-muted-foreground text-center py-2">
+                      Save the agent first to get your notification email
+                    </div>
+                  )}
                 </div>
               </CollapsibleCard>
 
