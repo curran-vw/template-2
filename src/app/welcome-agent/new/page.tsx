@@ -41,6 +41,7 @@ import { ConnectGmail } from "@/components/common/agent-specific/welcome-agent/c
 import { useAuth } from '@/lib/hooks/useAuth'
 import { gmailUtils } from '@/app/lib/firebase/gmailUtils'
 import { mailgunUtils } from '@/app/lib/firebase/mailgunUtils'
+import { OnboardingTooltip } from "@/app/components/agent-specific/welcome-agent/onboarding-tooltip"
 
 const presetDirectives = [
   { 
@@ -134,6 +135,7 @@ export default function WelcomeAgentNew() {
   const [connectedAccounts, setConnectedAccounts] = useState<any[]>([])
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(false)
   const [isTestingEmail, setIsTestingEmail] = useState<string | null>(null)
+  const [showOnboarding, setShowOnboarding] = useState(!editId)
 
   // Track initial values
   const [initialValues, setInitialValues] = useState({
@@ -703,7 +705,12 @@ export default function WelcomeAgentNew() {
 
   return (
     <div className="min-h-screen w-full bg-zinc-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-7xl bg-white rounded-xl overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 2rem)' }}>
+      {/* Onboarding Overlay */}
+      {showOnboarding && (
+        <div className="fixed inset-0 z-30 bg-black/50" />
+      )}
+      
+      <div className="w-full max-w-7xl bg-white rounded-xl overflow-hidden flex flex-col relative" style={{ height: 'calc(100vh - 2rem)' }}>
         {/* Header */}
         <div className="bg-gray-100 w-full shadow-sm flex-shrink-0">
           <div className="h-16 flex items-center justify-between px-6">
@@ -772,99 +779,123 @@ export default function WelcomeAgentNew() {
         {/* Main Content Area */}
         <div className="flex-1 flex overflow-hidden">
           {/* Left Column - Configuration */}
-          <div className="w-2/5 overflow-y-auto p-6 space-y-6 bg-gray-50 custom-scrollbar">
-            <CollapsibleCard
-              title="Email Purpose"
-              isOpen={isEmailPurposeOpen}
-              onToggle={() => toggleSection(setIsEmailPurposeOpen)}
-              className={cn(
-                validationErrors.emailPurpose && "ring-1 ring-red-500"
-              )}
-            >
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="directive-select" className="text-sm font-medium">Choose Email Purpose</Label>
-                  <Select onValueChange={handlePresetDirectiveChange} value={selectedDirective}>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Select an email purpose" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {presetDirectives.map((preset) => (
-                        <SelectItem key={preset.value} value={preset.value}>
-                          {preset.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+          <div className="w-2/5 overflow-y-auto p-6 space-y-6 bg-gray-50 custom-scrollbar relative">
+            {/* Email Purpose Card - Elevated above overlay */}
+            <div className={cn(
+              "relative",
+              showOnboarding && "z-40"
+            )}>
+              <CollapsibleCard
+                title="Email Purpose"
+                isOpen={isEmailPurposeOpen}
+                onToggle={() => toggleSection(setIsEmailPurposeOpen)}
+                className={cn(
+                  validationErrors.emailPurpose && "ring-1 ring-red-500"
+                )}
+              >
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="directive-select" className="text-sm font-medium">Choose Email Purpose</Label>
+                    <Select onValueChange={handlePresetDirectiveChange} value={selectedDirective}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Select an email purpose" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {presetDirectives.map((preset) => (
+                          <SelectItem key={preset.value} value={preset.value}>
+                            {preset.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="ai-directive" className="text-sm font-medium">Customize AI Directive</Label>
+                    <Tooltip 
+                      content={validationErrors.emailPurpose} 
+                      open={openTooltips.emailPurpose}
+                      onOpenChange={(open) => {
+                        // Only allow closing via the X button
+                        if (!open) {
+                          setOpenTooltips(prev => ({ ...prev, emailPurpose: false }))
+                        }
+                      }}
+                    >
+                      <Textarea
+                        id="ai-directive"
+                        placeholder="Customize the AI instructions for generating the email"
+                        value={directive}
+                        onChange={(e) => handleDirectiveChange(e.target.value)}
+                        className={cn(
+                          "mt-1",
+                          validationErrors.emailPurpose && "border-red-500 focus-visible:ring-red-500"
+                        )}
+                      />
+                    </Tooltip>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Refine what the AI should do and include call-to-action.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="ai-directive" className="text-sm font-medium">Customize AI Directive</Label>
-                  <Tooltip 
-                    content={validationErrors.emailPurpose} 
-                    open={openTooltips.emailPurpose}
-                    onOpenChange={(open) => {
-                      // Only allow closing via the X button
-                      if (!open) {
-                        setOpenTooltips(prev => ({ ...prev, emailPurpose: false }))
-                      }
-                    }}
-                  >
-                    <Textarea
-                      id="ai-directive"
-                      placeholder="Customize the AI instructions for generating the email"
-                      value={directive}
-                      onChange={(e) => handleDirectiveChange(e.target.value)}
-                      className={cn(
-                        "mt-1",
-                        validationErrors.emailPurpose && "border-red-500 focus-visible:ring-red-500"
-                      )}
-                    />
-                  </Tooltip>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Refine what the AI should do and include call-to-action.
-                  </p>
-                </div>
-              </div>
-            </CollapsibleCard>
+              </CollapsibleCard>
 
-            <CollapsibleCard
-              title="Your Business Context"
-              isOpen={isBusinessContextOpen}
-              onToggle={() => toggleSection(setIsBusinessContextOpen)}
-              className={cn(
-                validationErrors.businessPurpose && "ring-1 ring-red-500"
+              {/* Onboarding Tooltip */}
+              {showOnboarding && (
+                <OnboardingTooltip 
+                  onDismiss={() => setShowOnboarding(false)}
+                  className="absolute left-1/2 -translate-x-1/2 mt-4"
+                  style={{ top: 'calc(100% + 16px)' }}
+                />
               )}
-            >
-              <div className="space-y-4">
-                <div>
-                  <BusinessContext
-                    website={businessInfo.website}
-                    purpose={businessInfo.purpose}
-                    additionalContext={businessInfo.context}
-                    websiteSummary={websiteSummary}
-                    onWebsiteChange={(value) => setBusinessInfo(prev => ({ ...prev, website: value }))}
-                    onPurposeChange={(value) => {
-                      setBusinessInfo(prev => ({ ...prev, purpose: value }))
-                    }}
-                    onAdditionalContextChange={(value) => setBusinessInfo(prev => ({ ...prev, context: value }))}
-                    onWebsiteSummaryChange={(summary) => setWebsiteSummary(summary)}
-                    agentId={editId}
-                    validationError={validationErrors.businessPurpose}
-                    showTooltip={openTooltips.businessPurpose}
-                    onTooltipOpenChange={(open) => {
-                      // Only allow closing via the X button
-                      if (!open) {
-                        setOpenTooltips(prev => ({ ...prev, businessPurpose: false }))
-                      }
-                    }}
-                  />
+            </div>
+
+            {/* Rest of the cards - Behind overlay when onboarding */}
+            <div className={cn(
+              "relative",
+              showOnboarding && "opacity-50 pointer-events-none"
+            )}>
+              <CollapsibleCard
+                title="Your Business Context"
+                isOpen={isBusinessContextOpen}
+                onToggle={() => toggleSection(setIsBusinessContextOpen)}
+                className={cn(
+                  validationErrors.businessPurpose && "ring-1 ring-red-500"
+                )}
+              >
+                <div className="space-y-4">
+                  <div>
+                    <BusinessContext
+                      website={businessInfo.website}
+                      purpose={businessInfo.purpose}
+                      additionalContext={businessInfo.context}
+                      websiteSummary={websiteSummary}
+                      onWebsiteChange={(value) => setBusinessInfo(prev => ({ ...prev, website: value }))}
+                      onPurposeChange={(value) => {
+                        setBusinessInfo(prev => ({ ...prev, purpose: value }))
+                      }}
+                      onAdditionalContextChange={(value) => setBusinessInfo(prev => ({ ...prev, context: value }))}
+                      onWebsiteSummaryChange={(summary) => setWebsiteSummary(summary)}
+                      agentId={editId}
+                      validationError={validationErrors.businessPurpose}
+                      showTooltip={openTooltips.businessPurpose}
+                      onTooltipOpenChange={(open) => {
+                        // Only allow closing via the X button
+                        if (!open) {
+                          setOpenTooltips(prev => ({ ...prev, businessPurpose: false }))
+                        }
+                      }}
+                    />
+                  </div>
                 </div>
-              </div>
-            </CollapsibleCard>
+              </CollapsibleCard>
+            </div>
           </div>
 
           {/* Right Column - Preview */}
-          <div className="w-3/5 p-6 space-y-6 overflow-y-auto bg-white custom-scrollbar">
+          <div className={cn(
+            "w-3/5 p-6 space-y-6 overflow-y-auto bg-white custom-scrollbar",
+            showOnboarding && "opacity-50 pointer-events-none"
+          )}>
             <Card className="shadow-sm">
               <CardHeader>
                 <CardTitle>Email Preview</CardTitle>
