@@ -4,20 +4,25 @@ import { useState, useEffect } from 'react'
 import { Button } from "./button"
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { useWorkspace } from "@/app/lib/hooks/useWorkspace"
-import { Check, ChevronsUpDown, Plus, Loader2, X } from "lucide-react"
+import { Check, ChevronsUpDown, Plus, Loader2, X, Settings, Users, Pencil } from "lucide-react"
 import { cn } from "@/app/lib/utils"
 import * as Dialog from '@radix-ui/react-dialog'
 import { Input } from "./input"
 import { useAuth } from "@/lib/hooks/useAuth"
 import { db } from "@/app/lib/firebase/firebase"
-import { collection, addDoc } from "firebase/firestore"
+import { collection, addDoc, getDocs, query, where } from "firebase/firestore"
+import { WorkspaceSettings } from './WorkspaceSettings'
+import { useToast } from "../common/use-toast"
 
 export function WorkspaceSwitcher() {
   const { workspace, workspaces, setWorkspace, refreshWorkspaces } = useWorkspace()
   const { user } = useAuth()
+  const { toast } = useToast()
   const [isCreating, setIsCreating] = useState(false)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false)
   const [newWorkspaceName, setNewWorkspaceName] = useState("")
+  const [open, setOpen] = useState(false)
 
   // Debug logging - only log when values actually change
   useEffect(() => {
@@ -41,6 +46,20 @@ export function WorkspaceSwitcher() {
 
     setIsCreating(true)
     try {
+      // Check for duplicate names
+      const existingWorkspace = workspaces.find(
+        w => w.name.toLowerCase() === newWorkspaceName.trim().toLowerCase()
+      )
+      
+      if (existingWorkspace) {
+        toast({
+          title: "Error",
+          description: "A workspace with this name already exists",
+          variant: "destructive"
+        })
+        return
+      }
+
       const newWorkspace = {
         name: newWorkspaceName.trim(),
         ownerId: user.uid,
@@ -54,23 +73,39 @@ export function WorkspaceSwitcher() {
         ...newWorkspace
       }
 
-      // Refresh the workspaces list
       await refreshWorkspaces()
-      
-      // Set the new workspace as active
       setWorkspace(createdWorkspace)
       setShowCreateDialog(false)
       setNewWorkspaceName("")
+      
+      toast({
+        title: "Success",
+        description: "Workspace created successfully"
+      })
     } catch (error) {
       console.error('Error creating workspace:', error)
+      toast({
+        title: "Error",
+        description: "Failed to create workspace",
+        variant: "destructive"
+      })
     } finally {
       setIsCreating(false)
     }
   }
 
+  const handleWorkspaceDeleted = async () => {
+    setShowSettingsDialog(false);
+    await refreshWorkspaces();
+    
+    // The workspace list will be updated after refreshWorkspaces
+    // If there are no workspaces left, setWorkspace(null) will be called
+    // If there are workspaces, the active workspace was already set in handleDelete
+  }
+
   return (
     <>
-      <DropdownMenu.Root>
+      <DropdownMenu.Root open={open} onOpenChange={setOpen}>
         <DropdownMenu.Trigger asChild>
           <Button variant="outline" role="combobox" className="w-[200px] justify-between">
             {workspace?.name || "Select workspace"}
@@ -78,27 +113,42 @@ export function WorkspaceSwitcher() {
           </Button>
         </DropdownMenu.Trigger>
         <DropdownMenu.Portal>
-          <DropdownMenu.Content className="z-50 w-[200px] bg-white rounded-md shadow-lg p-1">
+          <DropdownMenu.Content className="z-50 min-w-[200px] bg-white rounded-md shadow-lg p-1">
             {workspaces.length > 0 ? (
               workspaces.map((ws) => (
                 <DropdownMenu.Item
                   key={ws.id}
-                  onClick={() => {
-                    console.log('Selecting workspace:', ws)
-                    setWorkspace(ws)
-                  }}
+                  onClick={() => setWorkspace(ws)}
                   className={cn(
-                    "flex items-center px-2 py-2 text-sm cursor-pointer hover:bg-gray-100 rounded-sm",
+                    "flex items-center justify-between px-2 py-2 text-sm cursor-pointer hover:bg-gray-100 rounded-sm group outline-none",
                     workspace?.id === ws.id && "font-medium"
                   )}
                 >
-                  <Check
+                  <div className="flex items-center flex-1">
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        workspace?.id === ws.id ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    {ws.name}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     className={cn(
-                      "mr-2 h-4 w-4",
-                      workspace?.id === ws.id ? "opacity-100" : "opacity-0"
+                      "ml-2 h-8 w-8 p-0",
+                      "opacity-0 group-hover:opacity-100 transition-opacity"
                     )}
-                  />
-                  {ws.name}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setWorkspace(ws);
+                      setShowSettingsDialog(true);
+                      setOpen(false);
+                    }}
+                  >
+                    <Settings className="h-4 w-4" />
+                  </Button>
                 </DropdownMenu.Item>
               ))
             ) : (
@@ -112,7 +162,7 @@ export function WorkspaceSwitcher() {
             <DropdownMenu.Separator className="h-px bg-gray-200 my-1" />
             <DropdownMenu.Item
               onClick={() => setShowCreateDialog(true)}
-              className="flex items-center px-2 py-2 text-sm cursor-pointer hover:bg-gray-100 rounded-sm"
+              className="flex items-center px-2 py-2 text-sm cursor-pointer hover:bg-gray-100 rounded-sm outline-none"
             >
               <Plus className="mr-2 h-4 w-4" />
               Create New Workspace
@@ -168,6 +218,15 @@ export function WorkspaceSwitcher() {
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
+
+      {/* Workspace Settings Dialog */}
+      {workspace && showSettingsDialog && (
+        <WorkspaceSettings
+          workspace={workspace}
+          onClose={() => setShowSettingsDialog(false)}
+          onDelete={handleWorkspaceDeleted}
+        />
+      )}
     </>
   )
 } 

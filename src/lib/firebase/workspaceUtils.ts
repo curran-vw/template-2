@@ -85,4 +85,12 @@ export async function updateWorkspaceMembers(workspaceId: string, userId: string
   await updateDoc(workspaceRef, {
     members: action === 'add' ? arrayUnion(userId) : arrayRemove(userId)
   });
+}
+
+export async function updateWorkspaceName(workspaceId: string, newName: string): Promise<void> {
+  const workspaceRef = doc(db, 'workspaces', workspaceId);
+  await updateDoc(workspaceRef, {
+    name: newName,
+    updatedAt: Date.now()
+  });
 } 
