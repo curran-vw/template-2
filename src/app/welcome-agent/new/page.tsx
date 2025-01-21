@@ -136,6 +136,7 @@ export default function WelcomeAgentNew() {
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(false)
   const [isTestingEmail, setIsTestingEmail] = useState<string | null>(null)
   const [showOnboarding, setShowOnboarding] = useState(!editId)
+  const [emailToDelete, setEmailToDelete] = useState<{id: string, email: string} | null>(null)
 
   // Track initial values
   const [initialValues, setInitialValues] = useState({
@@ -1015,20 +1016,7 @@ export default function WelcomeAgentNew() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleTestEmail(account.id!)}
-                                disabled={isTestingEmail === account.id}
-                                className="hover:bg-blue-50 hover:text-blue-600"
-                              >
-                                {isTestingEmail === account.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Mail className="h-4 w-4" />
-                                )}
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleRemoveGmailConnection(account.id!)}
+                                onClick={() => setEmailToDelete({ id: account.id!, email: account.email })}
                                 className="hover:bg-red-50 hover:text-red-600"
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -1042,9 +1030,8 @@ export default function WelcomeAgentNew() {
                         <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center">
                           <Mail className="h-8 w-8 text-gray-400 mx-auto mb-3" />
                           <p className="text-sm text-gray-600 mb-1">
-                            No email accounts connected yet
+                            No email accounts connected in this workspace
                           </p>
-                          
                         </div>
                       )}
                       
@@ -1146,6 +1133,33 @@ export default function WelcomeAgentNew() {
         isOpen={!!generationStep} 
         currentStep={generationStep || 'user-info'} 
       />
+
+      <Dialog open={!!emailToDelete} onOpenChange={() => setEmailToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove Email Account</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to remove {emailToDelete?.email}? You will need to reconnect this account again to use it in the future.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button variant="outline" onClick={() => setEmailToDelete(null)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={() => {
+                if (emailToDelete?.id) {
+                  handleRemoveGmailConnection(emailToDelete.id);
+                  setEmailToDelete(null);
+                }
+              }}
+            >
+              Remove Account
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <style jsx global>{`
         .custom-scrollbar::-webkit-scrollbar {
