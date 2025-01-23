@@ -2,6 +2,7 @@ import { db } from '@/app/lib/firebase/firebase'
 import { collection, doc, setDoc, getDoc, getDocs, query, where, deleteDoc } from 'firebase/firestore'
 import { WelcomeAgent } from '../types/welcome-agent'
 import { gmailUtils } from '@/app/lib/firebase/gmailUtils'
+import { emailHistoryUtils } from '@/app/lib/firebase/emailHistoryUtils'
 
 const COLLECTION_NAME = 'welcomeAgents'
 
@@ -227,17 +228,68 @@ export const welcomeAgentUtils = {
 
       console.log('Generated subject:', subjectResponse)
 
-      return {
+      const emailDetails = {
         subject: subjectResponse,
         body: emailBodyResponse
       }
+
+      // Create email history record
+      const shouldReview = agent.configuration?.settings?.reviewBeforeSending ?? false
+      const status = shouldReview ? 'under_review' : 'sent'
+
+      // Store the email in history
+      try {
+        await emailHistoryUtils.createEmailRecord({
+          recipientEmail: signupInfo.email,
+          agentId: agent.id || '',
+          agentName: agent.name,
+          workspaceId: agent.workspaceId,
+          subject: emailDetails.subject,
+          body: emailDetails.body,
+          status,
+          ...(gmailConnection?.id ? { gmailConnectionId: gmailConnection.id } : {})
+        })
+
+        // If no review needed, send immediately
+        if (!shouldReview && gmailConnection) {
+          await gmailUtils.sendEmail({
+            to: signupInfo.email,
+            subject: emailDetails.subject,
+            body: emailDetails.body,
+            connectionId: gmailConnection.id
+          })
+        }
+      } catch (recordError) {
+        console.error('Error recording email:', recordError)
+        // Continue with returning the email details even if recording failed
+      }
+
+      return emailDetails
     } catch (error) {
       console.error('Error generating welcome email:', error)
-      // Return a fallback email instead of throwing
-      return {
+      
+      // Create a record of the failed attempt
+      const failedEmailDetails = {
         subject: `Welcome to ${agent.name}!`,
         body: `Thank you for signing up! We'll be in touch soon.`
       }
+
+      try {
+        await emailHistoryUtils.createEmailRecord({
+          recipientEmail: signupInfo.email,
+          agentId: agent.id || '',
+          agentName: agent.name,
+          workspaceId: agent.workspaceId,
+          subject: failedEmailDetails.subject,
+          body: failedEmailDetails.body,
+          status: 'failed',
+          error: error instanceof Error ? error.message : 'Unknown error occurred'
+        })
+      } catch (recordError) {
+        console.error('Error creating failure record:', recordError)
+      }
+
+      return failedEmailDetails
     }
   },
 
