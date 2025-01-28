@@ -219,6 +219,64 @@ With this setup, every time a new lead signs up and an email is sent to the uniq
   - If the user has saved the draft and made no further changes, they can simply go back without any prompt.
   - If there are unsaved changes, a popup should ask whether to **Save** or **Exit Without Saving**.
 
+
+### 10. Email History
+The **Email History** page serves as a central hub for managing and tracking all emails sent by the Welcome Agent in the users current workspace. It is accessible from both the main workspace and individual agent views.
+
+#### Key Features:
+
+1. **Sidebar Navigation Item**  
+   - A new menu item, **Email History**, will be added to the workspace sidebar.  
+   - This page displays the full email history for the entire workspace.
+
+2. **Agent-Specific Email History**  
+   - Users can view email history for specific agents by clicking on the **ellipsis menu** (`...`) in the "View All Agents" tab.  
+   - A new option, **View Email History**, will be added between "Edit" and "Delete" in the dropdown menu.
+   - When clicked, the user will be redirected to the **Email History** page filtered for that specific agent.
+
+3. **Email History Table**  
+   - **Overview**: The table displays all emails sent by the Welcome Agent, with the following columns:
+     - **Email Address**: The recipient's email address.
+     - **Status**: The current status of the email (e.g., Sent, Under Review, Denied).  
+     - **Date**: The date and time the email was processed.
+   - **Statuses**:
+     - **Sent**: Email was successfully sent.
+     - **Under Review**: Email is awaiting manual approval.
+     - **Denied**: Email was reviewed and denied.
+   - **Actions for Under Review Emails**:
+     - Button with Check and says "Approve": Sends the email immediately.
+     - Button with X and says "Deny": Marks the email as denied and prevents it from being sent.
+     - Both will change the status of the email to "Sent" or "Denied" respectively.
+
+4. **User Flow for Review Option**:  
+   - When **Review All Emails Before Sending** is enabled:
+     - Emails are queued as "Under Review."
+     - Users can navigate to the Email History page to approve or deny emails.
+   - When **Review All Emails Before Sending** is disabled:
+     - All emails are sent automatically and marked as "Sent" in the Email History table.
+
+### 11. Additional Settings
+The "Additional Settings" section is accessible as a collapsible card within the configuration drawer of the Welcome Agent. These settings allow users to customize the agent's behavior. Each option can be toggled on or off using switches for easy control.
+
+#### Settings Options:
+
+1. **Skip Generic Email Addresses**  
+   - **Description**: When enabled, the Welcome Agent will skip processing signups that use basic email providers (e.g., Gmail, Yahoo, Yopmail).  
+   - **Purpose**: Ensures the agent only runs for users who sign up with professional domain-based emails.  
+   - **How it Works**:  
+     - If enabled, any signup using a basic email provider is ignored by the agent.  
+     - If disabled, all signups are processed regardless of the email provider.
+
+2. **Review All Emails Before Sending**  
+   - **Description**: When enabled, the Welcome Agent will not send emails automatically. Instead, users will have the opportunity to review emails before they are sent.  
+   - **Purpose**: Allows for manual approval of emails, ensuring greater control over the communication sent to new users.  
+   - **How it Works**:  
+     - Emails are queued for review instead of being sent immediately.  
+     - A new page, **Email History**, will display the emails under review.  
+     - Users can approve or deny emails from this page:
+       - Approved emails are sent immediately.
+       - Denied emails are marked as "Denied" and not sent.
+
 ---
 
 ## Admin Side
@@ -232,11 +290,7 @@ With this setup, every time a new lead signs up and an email is sent to the uniq
 
 ---
 
-
-## Code Structure
-Here's the general structure of the code and where we should put things
-
-app/
+src/app/
 ├── components/
 │   ├── common/                     # Reusable UI components              
 │   │   ├── agent-specific/         # UI components specific to agents
@@ -245,13 +299,16 @@ app/
 │   │   │       └── preview.tsx             # Optional preview component if needed
 │   │   ├── toast.tsx              # Toast notifications
 │   │   └── use-toast.ts           # Hook for managing toasts
-│   ├── shared/                    # Shared logic, utilities, and hooks
-│   │   ├── hooks/                 # Custom React hooks
-│   │   └── utils/                 # Utility functions
-├── agents/
-│   └── welcome-agent/             # All logic and services for the Welcome Agent
-│       ├── index.ts               # Entry point for Welcome Agent logic
-│       ├── api.ts                 # API calls for the Welcome Agent
-│       └── logic.ts               # Business logic for the Welcome Agent
-├── pages/
-│   └── welcome-agent.tsx          # Main configuration page for the Welcome Agent
+│   └── shared/                    # Shared logic, utilities, and hooks
+│       ├── hooks/                 # Custom React hooks
+│       └── utils/                 # Utility functions
+└── agents/
+    └── welcome-agent/             # All logic, services, and pages for the Welcome Agent
+        ├── index.ts               # Entry point for Welcome Agent logic
+        ├── new/                   # New Welcome Agent setup
+        │   └── index.ts           # Entry point for new Welcome Agent
+        ├── api.ts                 # API calls for the Welcome Agent
+        └── logic.ts               # Business logic for the Welcome Agent
+└── lib/
+    └── utils/
+        └── welcome-agent-utils.ts # Utility functions for the Welcome Agent

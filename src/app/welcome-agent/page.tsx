@@ -294,6 +294,13 @@ function AgentCard({ agent, onEdit, onDelete }: {
     router.push(`/welcome-agent/new?edit=${agent.id}&configure=true`)
   }
 
+  const handleEmailHistory = () => {
+    if (agent.id) {
+      console.log('Navigating to email history for agent:', agent.id) // Debug log
+      router.push(`/email-history?agentId=${agent.id}`)
+    }
+  }
+
   return (
     <Card className="flex flex-col">
       <CardHeader className="flex-1 space-y-4 pb-6">
@@ -306,20 +313,21 @@ function AgentCard({ agent, onEdit, onDelete }: {
           </CardTitle>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="-mr-2">
+              <Button variant="ghost" className="h-8 w-8 p-0">
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={onEdit}>
-                <Pencil className="mr-2 h-4 w-4" />
                 Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleEmailHistory}>
+                View Email History
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={onDelete}
-                className="text-destructive"
+                className="text-red-600"
               >
-                <Trash2 className="mr-2 h-4 w-4" />
                 Delete
               </DropdownMenuItem>
             </DropdownMenuContent>

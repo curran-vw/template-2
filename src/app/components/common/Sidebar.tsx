@@ -1,6 +1,6 @@
 'use client';
 
-import { LayoutDashboard, Mail, FileText, ChevronDown, ChevronFirst, ChevronLast, ClipboardList } from 'lucide-react'
+import { LayoutDashboard, Mail, FileText, ChevronDown, ChevronFirst, ChevronLast, ClipboardList, Inbox } from 'lucide-react'
 import { cn } from "@/lib/utils"
 import { Button } from "@/app/components/common/button"
 import { useState } from "react"
@@ -82,6 +82,13 @@ export default function Sidebar({ onCollapse, isMobileOpen, onMobileClose }: Sid
           ]}
         />
         <NavItem 
+          icon={Inbox} 
+          label="Email History" 
+          href="/email-history"
+          active={pathname === '/email-history'} 
+          collapsed={collapsed} 
+        />
+        <NavItem 
           icon={ClipboardList} 
           label="Logs" 
           href="/logs"
@@ -136,6 +143,7 @@ interface NavItemWithChildrenProps extends Omit<NavItemProps, 'href'> {
 function NavItemWithChildren({ icon: Icon, label, collapsed, children, active, href }: NavItemWithChildrenProps) {
   const [isOpen, setIsOpen] = useState(true)
   const router = useRouter()
+  const pathname = usePathname() || ''
 
   const handleClick = () => {
     if (collapsed) {

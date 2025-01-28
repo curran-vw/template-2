@@ -14,6 +14,7 @@ export interface WelcomeAgent {
     website: string
     purpose: string
     additionalContext?: string
+    websiteSummary?: string
   }
   configuration: {
     emailAccount?: string
