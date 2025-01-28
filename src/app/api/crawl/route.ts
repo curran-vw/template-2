@@ -110,7 +110,7 @@ export async function POST(req: Request) {
     const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY || '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'}`,
+        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY || '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'}`,
         'Content-Type': 'application/json',
         'HTTP-Referer': 'https://agentfolio.ai',
         'X-Title': 'Agentfolio'
