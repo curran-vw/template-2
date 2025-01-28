@@ -25,12 +25,19 @@ interface EmailRecord {
   workspaceId: string
   error?: string
   gmailConnectionId?: string
+  userInfo?: string
+  businessInfo?: string
 }
 
 export const emailHistoryUtils = {
-  async getEmailHistory(workspaceId: string, agentId: string | null = null) {
+  async getEmailHistory(
+    workspaceId: string, 
+    agentId: string | null = null,
+    page: number = 1,
+    pageSize: number = 10
+  ) {
     try {
-      console.log('Getting email history:', { workspaceId, agentId }) // Debug log
+      console.log('Getting email history:', { workspaceId, agentId, page, pageSize })
 
       // Create query constraints array
       const constraints = [
@@ -50,59 +57,90 @@ export const emailHistoryUtils = {
       )
 
       const snapshot = await getDocs(emailsQuery)
-      console.log('Found emails:', snapshot.size) // Debug log
+      const totalEmails = snapshot.docs.length
 
-      return snapshot.docs.map(doc => ({
+      // Calculate pagination
+      const startIndex = (page - 1) * pageSize
+      const paginatedDocs = snapshot.docs.slice(startIndex, startIndex + pageSize)
+
+      const emails = paginatedDocs.map(doc => ({
         id: doc.id,
         ...doc.data(),
         createdAt: (doc.data().createdAt as Timestamp).toDate()
       })) as EmailRecord[]
+
+      return {
+        emails: snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: (doc.data().createdAt as Timestamp).toDate()
+        })) as EmailRecord[],
+        pagination: {
+          currentPage: page,
+          totalPages: Math.ceil(totalEmails / pageSize),
+          totalEmails,
+          hasNextPage: startIndex + pageSize < totalEmails,
+          hasPreviousPage: page > 1
+        }
+      }
     } catch (error) {
       console.error('Error fetching email history:', error)
       throw error
     }
   },
 
-  async updateEmailStatus(emailId: string, status: 'sent' | 'under_review' | 'denied' | 'failed') {
+  async updateEmailStatus(emailId: string, status: 'sent' | 'denied') {
     try {
-      const emailRef = doc(db, 'emailHistory', emailId)
-      await updateDoc(emailRef, {
-        status,
-        updatedAt: Timestamp.now()
-      })
+      const docRef = doc(db, 'emailHistory', emailId)
+      const emailDoc = await getDoc(docRef)
+      
+      if (!emailDoc.exists()) {
+        throw new Error('Email record not found')
+      }
 
-      // If status is 'sent', trigger the email sending
+      const emailData = emailDoc.data()
+
+      // If approving the email, send it
       if (status === 'sent') {
-        const emailDoc = await getDoc(emailRef)
-        if (emailDoc.exists()) {
-          const emailData = emailDoc.data()
-          if (!emailData.gmailConnectionId) {
-            throw new Error('No Gmail connection found for this email')
-          }
-          
-          // Send via Gmail
+        if (!emailData.gmailConnectionId) {
+          throw new Error('No Gmail connection ID found for this email')
+        }
+
+        try {
           await gmailUtils.sendEmail({
+            connectionId: emailData.gmailConnectionId,
             to: emailData.recipientEmail,
             subject: emailData.subject,
-            body: emailData.body,
-            connectionId: emailData.gmailConnectionId
+            body: emailData.body
           })
 
-          // Update the email record to reflect successful sending
-          await updateDoc(emailRef, {
+          // Update the status and add sent timestamp
+          await updateDoc(docRef, {
+            status,
+            updatedAt: Timestamp.now(),
             sentAt: Timestamp.now()
           })
+        } catch (sendError) {
+          console.error('Error sending email:', sendError)
+          // If sending fails, mark as failed
+          await updateDoc(docRef, {
+            status: 'failed',
+            error: sendError instanceof Error ? sendError.message : 'Failed to send email',
+            updatedAt: Timestamp.now()
+          })
+          throw sendError
         }
+      } else {
+        // Just update status for non-send actions (like deny)
+        await updateDoc(docRef, {
+          status,
+          updatedAt: Timestamp.now()
+        })
       }
+
+      return true
     } catch (error) {
       console.error('Error updating email status:', error)
-      // Update the email record with the error
-      const emailRef = doc(db, 'emailHistory', emailId)
-      await updateDoc(emailRef, {
-        status: 'failed',
-        error: error.message,
-        updatedAt: Timestamp.now()
-      })
       throw error
     }
   },
@@ -133,7 +171,9 @@ export const emailHistoryUtils = {
     body,
     status = 'under_review',
     gmailConnectionId,
-    error
+    error,
+    userInfo,
+    businessInfo
   }: {
     recipientEmail: string
     agentId: string
@@ -144,6 +184,8 @@ export const emailHistoryUtils = {
     status?: 'sent' | 'under_review' | 'denied' | 'failed'
     gmailConnectionId?: string
     error?: string
+    userInfo?: string
+    businessInfo?: string
   }) {
     try {
       // Create base record with required fields
@@ -156,7 +198,9 @@ export const emailHistoryUtils = {
         body,
         status,
         createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now()
+        updatedAt: Timestamp.now(),
+        userInfo,
+        businessInfo,
       }
 
       // Only add optional fields if they are defined

@@ -16,8 +16,7 @@ interface EmailGeneratorProps {
 }
 
 export function useEmailGenerator() {
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [isGenerating, setIsGenerating] = useState(false)
   const { workspace } = useWorkspace()
   const { toast } = useToast()
 
@@ -28,8 +27,7 @@ export function useEmailGenerator() {
     agentId,
     onStepChange 
   }: EmailGeneratorProps) => {
-    setIsLoading(true)
-    setError(null)
+    setIsGenerating(true)
 
     try {
       // Create EventSource for progress updates
@@ -60,30 +58,28 @@ export function useEmailGenerator() {
       eventSource.close()
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => null)
-        throw new Error(errorData?.error || 'Failed to generate email')
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to generate email')
       }
 
       const data = await response.json()
       return data.email
 
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to generate email'
-      setError(errorMessage)
+      console.error('Email generation error:', error)
       toast({
         title: "Error",
-        description: errorMessage,
+        description: error instanceof Error ? error.message : 'Failed to generate email',
         variant: "destructive"
       })
       return null
     } finally {
-      setIsLoading(false)
+      setIsGenerating(false)
     }
   }
 
   return {
     generateEmail,
-    isLoading,
-    error,
+    isGenerating
   }
 } 

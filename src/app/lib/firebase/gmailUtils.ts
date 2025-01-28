@@ -19,6 +19,13 @@ interface GmailConnection {
   connected_at: number
 }
 
+interface SendEmailParams {
+  connectionId: string
+  to: string
+  subject: string
+  body: string
+}
+
 export const gmailUtils = {
   async saveGmailConnection(
     workspaceId: string, 
@@ -145,25 +152,16 @@ export const gmailUtils = {
     return data.tokens.access_token
   },
 
-  async sendEmail(
-    senderEmail: string,
-    to: string,
-    subject: string,
-    body: string
-  ) {
+  async sendEmail({ connectionId, to, subject, body }: SendEmailParams) {
     try {
-      console.log('Attempting to send email:', {
-        from: senderEmail,
-        to,
-        subject
-      })
+      console.log('Attempting to send email:', { connectionId, to, subject })
 
-      // First get the Gmail connection for this email
-      const connection = await this.getConnectionByEmail(senderEmail)
+      // Get the connection details
+      const connection = await this.getConnectionById(connectionId)
       if (!connection) {
-        const workspaceConnections = await this.getWorkspaceConnections('uIRfO3U9XyCw2eIbeeFb')
-        console.log('Available workspace connections:', workspaceConnections)
-        throw new Error(`No Gmail connection found for ${senderEmail}. Available connections: ${workspaceConnections.map(c => c.email).join(', ')}`)
+        const connections = await this.getWorkspaceConnections('uIRfO3U9XyCw2eIbeeFb')
+        const availableEmails = connections.map(c => c.email).join(', ')
+        throw new Error(`No Gmail connection found for ID: ${connectionId}. Available connections: ${availableEmails}`)
       }
 
       console.log('Using Gmail connection:', {
@@ -180,7 +178,7 @@ export const gmailUtils = {
         'Content-Type: text/html; charset="UTF-8"',
         'MIME-Version: 1.0',
         `To: ${to}`,
-        `From: "${connection.name}" <${connection.email}>`, // Use the sender's name
+        `From: "${connection.name}" <${connection.email}>`,
         `Subject: ${subject}`,
         '',
         body
@@ -192,7 +190,7 @@ export const gmailUtils = {
         .replace(/\//g, '_')
         .replace(/=+$/, '')
 
-      // Send the email via Gmail API with delegated permissions
+      // Send the email via Gmail API
       const response = await fetch(
         'https://gmail.googleapis.com/gmail/v1/users/me/messages/send',
         {
@@ -200,7 +198,7 @@ export const gmailUtils = {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
-            'X-Goog-AuthUser': '0' // Use primary account profile
+            'X-Goog-AuthUser': '0'
           },
           body: JSON.stringify({
             raw: encodedEmail
@@ -214,6 +212,7 @@ export const gmailUtils = {
       }
 
       const result = await response.json()
+      console.log('Email sent successfully:', result)
       return result
     } catch (error) {
       console.error('Error sending email:', error)
@@ -291,5 +290,24 @@ export const gmailUtils = {
     
     console.log('Found Gmail connection:', connection)
     return connection
+  },
+
+  async getConnectionById(connectionId: string) {
+    try {
+      const docRef = doc(db, 'gmail_connections', connectionId)
+      const docSnap = await getDoc(docRef)
+      
+      if (!docSnap.exists()) {
+        return null
+      }
+
+      return {
+        id: docSnap.id,
+        ...docSnap.data()
+      }
+    } catch (error) {
+      console.error('Error getting Gmail connection:', error)
+      throw error
+    }
   }
 } 

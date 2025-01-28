@@ -147,6 +147,12 @@ export default function WelcomeAgentNew() {
 
   const { generateEmail, isGenerating } = useEmailGenerator()
 
+  // Add new state for settings
+  const [settings, setSettings] = useState({
+    sendOnlyWhenConfident: false,
+    reviewBeforeSending: false
+  })
+
   // Check if current values are different from initial values
   const checkForChanges = useCallback(() => {
     const hasChanges = 
@@ -211,6 +217,13 @@ export default function WelcomeAgentNew() {
         if (agent.lastTestEmail) {
           setEmailDetails(agent.lastTestEmail)
           setHasTestedAgent(true)
+        }
+
+        if (agent.configuration?.settings) {
+          setSettings({
+            sendOnlyWhenConfident: agent.configuration.settings.sendOnlyWhenConfident || false,
+            reviewBeforeSending: agent.configuration.settings.reviewBeforeSending || false
+          })
         }
 
         // Reset unsaved changes flag after loading
@@ -395,6 +408,16 @@ export default function WelcomeAgentNew() {
     }
   }
 
+  // Add handler for settings changes
+  const handleSettingChange = (setting: keyof typeof settings) => {
+    setSettings(prev => ({
+      ...prev,
+      [setting]: !prev[setting]
+    }))
+    setHasUnsavedChanges(true)
+  }
+
+  // Update the handleSave function to include settings
   const handleSave = async (action: 'publish' | 'draft') => {
     console.log('Starting save process...', { workspace, action })
 
@@ -475,8 +498,8 @@ export default function WelcomeAgentNew() {
           ...(selectedEmailAccount ? { emailAccount: selectedEmailAccount } : {}),
           ...(notificationEmail ? { notificationEmail } : {}),
           settings: {
-            sendOnlyWhenConfident: false,
-            reviewBeforeSending: false
+            sendOnlyWhenConfident: settings.sendOnlyWhenConfident,
+            reviewBeforeSending: settings.reviewBeforeSending
           }
         },
         ...(hasTestedAgent && emailDetails ? {
@@ -1106,11 +1129,19 @@ export default function WelcomeAgentNew() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="confident-only">Send only when AI is confident</Label>
-                      <Checkbox id="confident-only" />
+                      <Checkbox 
+                        id="confident-only" 
+                        checked={settings.sendOnlyWhenConfident}
+                        onCheckedChange={() => handleSettingChange('sendOnlyWhenConfident')}
+                      />
                     </div>
                     <div className="flex items-center justify-between">
                       <Label htmlFor="review-emails">Review emails before sending</Label>
-                      <Checkbox id="review-emails" />
+                      <Checkbox 
+                        id="review-emails" 
+                        checked={settings.reviewBeforeSending}
+                        onCheckedChange={() => handleSettingChange('reviewBeforeSending')}
+                      />
                     </div>
                   </div>
                 </div>

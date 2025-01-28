@@ -1,5 +1,5 @@
 import { db } from '@/app/lib/firebase/firebase'
-import { collection, doc, setDoc, getDoc, getDocs, query, where, deleteDoc } from 'firebase/firestore'
+import { collection, doc, setDoc, getDoc, getDocs, query, where, deleteDoc, orderBy } from 'firebase/firestore'
 import { WelcomeAgent } from '../types/welcome-agent'
 import { gmailUtils } from '@/app/lib/firebase/gmailUtils'
 import { emailHistoryUtils } from '@/app/lib/firebase/emailHistoryUtils'
@@ -233,35 +233,42 @@ export const welcomeAgentUtils = {
         body: emailBodyResponse
       }
 
-      // Create email history record
+      // Check if email should be reviewed before sending
       const shouldReview = agent.configuration?.settings?.reviewBeforeSending ?? false
       const status = shouldReview ? 'under_review' : 'sent'
 
-      // Store the email in history
+      // Extract user and business info for the email history
+      const userInfo = extractUserInfo(signupInfo.rawContent || signupInfo)
+      const businessInfo = extractBusinessInfo(agent.businessContext)
+
+      // Create email history record with AI responses
       try {
-        await emailHistoryUtils.createEmailRecord({
-          recipientEmail: signupInfo.email,
+        const emailId = await emailHistoryUtils.createEmailRecord({
+          recipientEmail: signupInfo.email || signupInfo.rawContent.email,
           agentId: agent.id || '',
           agentName: agent.name,
           workspaceId: agent.workspaceId,
           subject: emailDetails.subject,
           body: emailDetails.body,
           status,
+          userInfo: userInfoResponse,    // Store the AI response about the user
+          businessInfo: businessInfoResponse,  // Store the AI response about the business
           ...(gmailConnection?.id ? { gmailConnectionId: gmailConnection.id } : {})
         })
 
-        // If no review needed, send immediately
+        // Only send immediately if review is NOT required
         if (!shouldReview && gmailConnection) {
           await gmailUtils.sendEmail({
-            to: signupInfo.email,
+            to: signupInfo.email || signupInfo.rawContent.email,
             subject: emailDetails.subject,
             body: emailDetails.body,
             connectionId: gmailConnection.id
           })
         }
+
+        console.log(`Email ${shouldReview ? 'queued for review' : 'sent'} with ID: ${emailId}`)
       } catch (recordError) {
         console.error('Error recording email:', recordError)
-        // Continue with returning the email details even if recording failed
       }
 
       return emailDetails
@@ -296,5 +303,82 @@ export const welcomeAgentUtils = {
   async logEmailEvent(eventData: any) {
     // TODO: Implement logging
     console.log('Logging email event:', eventData)
+  },
+
+  async getWelcomeAgents(workspaceId: string) {
+    try {
+      if (!workspaceId) {
+        throw new Error('Workspace ID is required')
+      }
+
+      const agentsQuery = query(
+        collection(db, COLLECTION_NAME),
+        where('workspaceId', '==', workspaceId),
+        orderBy('createdAt', 'desc')
+      )
+
+      const snapshot = await getDocs(agentsQuery)
+      
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as WelcomeAgent[]
+    } catch (error) {
+      console.error('Error getting welcome agents:', error)
+      throw error
+    }
+  }
+}
+
+// Helper functions to extract info for email history
+function extractUserInfo(signupInfo: any): string {
+  try {
+    // If signupInfo is a string, process it as before
+    if (typeof signupInfo === 'string') {
+      const lines = signupInfo.split('\n')
+      return lines
+        .filter(line => line.trim())
+        .map(line => {
+          const [key, value] = line.split(':').map(s => s.trim())
+          return `${key}: ${value}`
+        })
+        .join('\n')
+    }
+    
+    // If signupInfo is an object, format it
+    if (typeof signupInfo === 'object') {
+      const info = []
+      if (signupInfo.email) info.push(`Email: ${signupInfo.email}`)
+      if (signupInfo.sender) info.push(`Name: ${signupInfo.sender}`)
+      if (signupInfo.subject) info.push(`Subject: ${signupInfo.subject}`)
+      return info.join('\n')
+    }
+
+    return String(signupInfo)
+  } catch (error) {
+    console.error('Error extracting user info:', error)
+    return String(signupInfo)
+  }
+}
+
+function extractBusinessInfo(businessContext: any): string {
+  try {
+    const info = []
+    if (businessContext.website) {
+      info.push(`Website: ${businessContext.website}`)
+    }
+    if (businessContext.purpose) {
+      info.push(`Purpose: ${businessContext.purpose}`)
+    }
+    if (businessContext.websiteSummary) {
+      info.push(`Summary: ${businessContext.websiteSummary}`)
+    }
+    if (businessContext.additionalContext) {
+      info.push(`Additional Context: ${businessContext.additionalContext}`)
+    }
+    return info.join('\n')
+  } catch (error) {
+    console.error('Error extracting business info:', error)
+    return JSON.stringify(businessContext)
   }
 } 

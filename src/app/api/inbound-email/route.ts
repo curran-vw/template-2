@@ -63,18 +63,38 @@ export async function POST(request: Request) {
 
     console.log('Generating welcome email for signup:', signupInfo)
 
-    // Generate and send welcome email
+    // Generate welcome email
     const emailContent = await welcomeAgentUtils.generateWelcomeEmail(agent, signupInfo)
     console.log('Generated email content:', emailContent)
     
+    // Check if email should be reviewed before sending
+    const shouldReview = agent.configuration?.settings?.reviewBeforeSending ?? false
+    
+    if (shouldReview) {
+      console.log('Email queued for review due to agent settings')
+      return NextResponse.json({ 
+        success: true, 
+        status: 'queued_for_review' 
+      })
+    }
+    
+    // Only send if review is not required
     if (agent.configuration?.emailAccount) {
       console.log('Sending welcome email using:', agent.configuration.emailAccount)
-      await gmailUtils.sendEmail(
-        agent.configuration.emailAccount,
-        recipientEmail,
-        emailContent.subject,
-        emailContent.body
-      )
+      
+      // Get the Gmail connection for this email account
+      const connection = await gmailUtils.getConnectionByEmail(agent.configuration.emailAccount)
+      if (!connection) {
+        throw new Error(`No Gmail connection found for ${agent.configuration.emailAccount}`)
+      }
+
+      await gmailUtils.sendEmail({
+        connectionId: connection.id!,
+        to: recipientEmail,
+        subject: emailContent.subject,
+        body: emailContent.body
+      })
+      
       console.log('Welcome email sent successfully')
     } else {
       console.warn('No email account configured for agent:', {
