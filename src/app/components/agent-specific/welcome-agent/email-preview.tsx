@@ -64,10 +64,10 @@ export function EmailPreview({ to, subject, body }: EmailPreviewProps) {
         {/* Email Footer/Toolbar */}
         <div className="flex items-center justify-between pt-4 border-t">
           <div className="flex items-center gap-3 text-gray-400">
-            <Paperclip className="h-5 w-5 cursor-pointer hover:text-gray-600" />
-            <Image className="h-5 w-5 cursor-pointer hover:text-gray-600" />
-            <Smile className="h-5 w-5 cursor-pointer hover:text-gray-600" />
-            <MoreVertical className="h-5 w-5 cursor-pointer hover:text-gray-600" />
+            <Paperclip className="h-5 w-5 cursor-pointer hover:text-gray-600" aria-label="Attach file" />
+            <Image className="h-5 w-5 cursor-pointer hover:text-gray-600" aria-label="Insert image" />
+            <Smile className="h-5 w-5 cursor-pointer hover:text-gray-600" aria-label="Insert emoji" />
+            <MoreVertical className="h-5 w-5 cursor-pointer hover:text-gray-600" aria-label="More options" />
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleCopy}>

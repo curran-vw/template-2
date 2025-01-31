@@ -10,7 +10,7 @@ export function OnboardingTooltip({ onDismiss, className }: OnboardingTooltipPro
   return (
     <div className={cn(
       "absolute bg-white rounded-lg shadow-lg p-6 max-w-md text-center z-50 w-[300px]",
-      "after:content-[''] after:absolute after:top-0 after:left-1/2 after:-translate-x-1/2 after:-translate-y-full",
+      "after:content-[\"\"] after:absolute after:top-0 after:left-1/2 after:-translate-x-1/2 after:-translate-y-full",
       "after:border-8 after:border-transparent after:border-b-white after:z-50",
       className
     )}>
