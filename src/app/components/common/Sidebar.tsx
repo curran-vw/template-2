@@ -180,7 +180,7 @@ function NavItemWithChildren({ icon: Icon, label, collapsed, children, active, h
           )} />
         )}
       </Button>
-      
+
       {!collapsed && isOpen && (
         <div className="ml-6 pl-3 border-l border-zinc-800 space-y-1">
           {children.map((child) => (
@@ -197,4 +197,4 @@ function NavItemWithChildren({ icon: Icon, label, collapsed, children, active, h
       )}
     </div>
   )
-} 
+}
