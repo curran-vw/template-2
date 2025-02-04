@@ -2,7 +2,7 @@
 
 import React, { createContext, useEffect, useState } from "react";
 import { signInWithPopup, GoogleAuthProvider, signOut as firebaseSignOut, Auth, User } from "firebase/auth";
-import { auth } from "../firebase/firebase";
+import { auth } from "@/app/lib/firebase/firebase";
 
 interface AuthContextType {
   user: User | null;

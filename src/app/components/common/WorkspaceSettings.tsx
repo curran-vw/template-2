@@ -58,8 +58,11 @@ export function WorkspaceSettings({ workspace, onClose, onDelete }: WorkspaceSet
       
       // Update the current workspace with the new name
       setWorkspace({
-        ...workspace,
-        name: newName.trim()
+        id: workspace.id,
+        name: newName.trim(),
+        createdAt: workspace.createdAt,
+        ownerId: workspace.ownerId,
+        members: workspace.members || []
       });
       
       setIsEditing(false);

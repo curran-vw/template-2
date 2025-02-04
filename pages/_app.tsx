@@ -1,4 +1,5 @@
 import { isAbortError } from 'next/dist/server/pipe-readable';
+import type { AppProps } from 'next/app';
 
 // Add error handling for unhandled rejections
 if (typeof window !== 'undefined') {
@@ -12,7 +13,7 @@ if (typeof window !== 'undefined') {
 }
 
 // Your existing App component
-function MyApp({ Component, pageProps }) {
+function MyApp({ Component, pageProps }: AppProps) {
   return <Component {...pageProps} />;
 }
 

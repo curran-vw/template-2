@@ -1,4 +1,4 @@
-import { db } from '@/app/lib/firebase/firebase';
+import { db } from './firebase';
 import { 
   collection, 
   addDoc, 
@@ -13,7 +13,7 @@ import {
   arrayUnion,
   arrayRemove
 } from 'firebase/firestore';
-import { Workspace, WorkspaceInvite } from '../types/workspace';
+import type { Workspace, WorkspaceInvite } from '@/lib/types/workspace';
 
 export async function createWorkspace(name: string, userId: string): Promise<Workspace> {
   const workspace = {

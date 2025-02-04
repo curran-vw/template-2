@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useWorkspace } from '@/app/lib/hooks/useWorkspace'
 import { useSearchParams } from 'next/navigation'
 import { Button } from '@/app/components/common/button'
@@ -60,7 +60,7 @@ export default function EmailHistory() {
   const [loading, setLoading] = useState(true)
   const [expandedEmail, setExpandedEmail] = useState<string | null>(null)
   const searchParams = useSearchParams()
-  const agentId = searchParams.get('agentId')
+  const agentId = searchParams?.get('agentId') ?? null
   const [currentPage, setCurrentPage] = useState(1)
   const [pagination, setPagination] = useState<{
     totalPages: number
@@ -74,14 +74,7 @@ export default function EmailHistory() {
     hasPreviousPage: false
   })
 
-  // Load emails whenever workspace or agentId changes
-  useEffect(() => {
-    if (workspace?.id) {
-      loadEmails()
-    }
-  }, [workspace?.id, agentId, currentPage])
-
-  const loadEmails = async () => {
+  const loadEmails = useCallback(async () => {
     try {
       const result = await emailHistoryUtils.getEmailHistory(
         workspace?.id!,
@@ -100,7 +93,13 @@ export default function EmailHistory() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [workspace?.id, agentId, currentPage, toast])
+
+  useEffect(() => {
+    if (workspace?.id) {
+      loadEmails()
+    }
+  }, [workspace?.id, loadEmails])
 
   const handleApprove = async (emailId: string) => {
     try {

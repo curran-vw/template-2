@@ -1,17 +1,19 @@
 import React from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/common/card"
 import { ChevronDown, ChevronUp } from 'lucide-react'
+import { cn } from "@/lib/utils"
 
 interface CollapsibleCardProps {
   title: string
   isOpen: boolean
   onToggle: () => void
   children: React.ReactNode
+  className?: string
 }
 
-export function CollapsibleCard({ title, isOpen, onToggle, children }: CollapsibleCardProps) {
+export function CollapsibleCard({ title, isOpen, onToggle, children, className }: CollapsibleCardProps) {
   return (
-    <Card className="shadow-sm bg-white">
+    <Card className={cn("shadow-sm bg-white", className)}>
       <CardHeader 
         className="cursor-pointer flex flex-row items-center justify-between"
         onClick={onToggle}

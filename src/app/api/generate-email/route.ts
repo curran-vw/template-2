@@ -2,8 +2,19 @@ import { NextResponse } from 'next/server'
 import { logsUtils } from '@/app/lib/firebase/logsUtils'
 
 export async function POST(req: Request) {
+  let signupInfo: any
+  let directive: string = ''
+  let businessContext: any
+  let workspaceId: string = ''
+  let agentId: string = ''
+
   try {
-    const { signupInfo, directive, businessContext, workspaceId, agentId } = await req.json()
+    const body = await req.json()
+    signupInfo = body.signupInfo
+    directive = body.directive
+    businessContext = body.businessContext
+    workspaceId = body.workspaceId
+    agentId = body.agentId
 
     // Log the start of the process
     await logsUtils.addLog({
@@ -242,8 +253,8 @@ export async function POST(req: Request) {
       status: 'failed',
       details: 'Email generation failed',
       response: error instanceof Error ? error.message : 'Unknown error',
-      workspaceId: workspaceId,
-      agentId: agentId
+      workspaceId: workspaceId || '',
+      agentId: agentId || ''
     })
     return NextResponse.json(
       { error: 'Failed to generate email' },

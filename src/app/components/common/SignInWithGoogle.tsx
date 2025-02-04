@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from '../../../lib/hooks/useAuth';
+import Image from 'next/image';
 
 export default function SignInWithGoogle() {
   const { signInWithGoogle } = useAuth();

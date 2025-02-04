@@ -13,6 +13,7 @@ import { db } from "@/app/lib/firebase/firebase"
 import { collection, addDoc, getDocs, query, where } from "firebase/firestore"
 import { WorkspaceSettings } from './WorkspaceSettings'
 import { useToast } from "../common/use-toast"
+import { Workspace } from "@/lib/types/workspace"
 
 export function WorkspaceSwitcher() {
   const { workspace, workspaces, setWorkspace, refreshWorkspaces } = useWorkspace()
@@ -39,7 +40,7 @@ export function WorkspaceSwitcher() {
       await refreshWorkspaces()
     }
     initialLoad()
-  }, []) // Empty dependency array - only runs once
+  }, [refreshWorkspaces]) // Add refreshWorkspaces to dependency array
 
   const handleCreateWorkspace = async () => {
     if (!user || !newWorkspaceName.trim()) return
@@ -60,15 +61,15 @@ export function WorkspaceSwitcher() {
         return
       }
 
-      const newWorkspace = {
+      const newWorkspace: Omit<Workspace, 'id'> = {
         name: newWorkspaceName.trim(),
         ownerId: user.uid,
         members: [user.uid],
-        createdAt: Date.now()
+        createdAt: new Date().toISOString()
       }
 
       const docRef = await addDoc(collection(db, 'workspaces'), newWorkspace)
-      const createdWorkspace = {
+      const createdWorkspace: Workspace = {
         id: docRef.id,
         ...newWorkspace
       }

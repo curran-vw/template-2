@@ -4,16 +4,9 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { auth } from '@/app/lib/firebase/firebase'
 import { db } from '@/app/lib/firebase/firebase'
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore'
+import { Workspace } from '@/lib/types/workspace'
 
 const WORKSPACE_STORAGE_KEY = 'lastSelectedWorkspaceId'
-
-export interface Workspace {
-  id: string
-  name: string
-  ownerId: string
-  members: string[]
-  createdAt: number
-}
 
 interface WorkspaceContextType {
   workspace: Workspace | null
@@ -58,10 +51,16 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         where('members', 'array-contains', userId)
       )
       const querySnapshot = await getDocs(workspacesQuery)
-      const workspacesList = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Workspace[]
+      const workspacesList = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          name: data.name,
+          ownerId: data.ownerId,
+          members: data.members || [],
+          createdAt: new Date(data.createdAt).toISOString()
+        } as Workspace;
+      })
       
       console.log('Loaded workspaces:', workspacesList)
       setWorkspaces(workspacesList)

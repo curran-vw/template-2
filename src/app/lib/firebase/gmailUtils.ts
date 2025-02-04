@@ -10,13 +10,14 @@ interface GmailTokens {
 }
 
 interface GmailConnection {
-  id?: string
+  id: string
   email: string
   name: string
   tokens: GmailTokens
   workspaceId: string
   userId: string
   connected_at: number
+  isActive?: boolean
 }
 
 interface SendEmailParams {
@@ -56,7 +57,7 @@ export const gmailUtils = {
 
       let connectionId: string
       
-      if (existing) {
+      if (existing && existing.id) {
         console.log('Updating existing connection:', existing.id)
         const connectionRef = doc(db, 'gmail_connections', existing.id)
         await setDoc(connectionRef, connectionData, { merge: true })
@@ -164,21 +165,24 @@ export const gmailUtils = {
         throw new Error(`No Gmail connection found for ID: ${connectionId}. Available connections: ${availableEmails}`)
       }
 
+      // Type assertion to ensure TypeScript knows connection has all GmailConnection properties
+      const connectionDetails: GmailConnection = connection
+
       console.log('Using Gmail connection:', {
-        id: connection.id,
-        email: connection.email,
-        name: connection.name
+        id: connectionDetails.id,
+        email: connectionDetails.email,
+        name: connectionDetails.name
       })
 
       // Get fresh access token
-      const accessToken = await this.refreshTokenIfNeeded(connection.id)
+      const accessToken = await this.refreshTokenIfNeeded(connectionId)
 
       // Construct the email in RFC 822 format with proper From header
       const emailContent = [
         'Content-Type: text/html; charset="UTF-8"',
         'MIME-Version: 1.0',
         `To: ${to}`,
-        `From: "${connection.name}" <${connection.email}>`,
+        `From: "${connectionDetails.name}" <${connectionDetails.email}>`,
         `Subject: ${subject}`,
         '',
         body
@@ -228,16 +232,16 @@ export const gmailUtils = {
       }
 
       // Send a test email
-      await this.sendEmail(
+      await this.sendEmail({
         connectionId,
-        connection.email, // Send to the same email
-        'Welcome Agent - Test Connection',
-        `
+        to: connection.email,
+        subject: 'Welcome Agent - Test Connection',
+        body: `
         <p>This is a test email from your Welcome Agent.</p>
         <p>If you're receiving this, your email connection is working correctly!</p>
         <p>You can now start using this email account to send welcome emails to your new signups.</p>
         `
-      )
+      })
 
       return true
     } catch (error) {
@@ -292,22 +296,13 @@ export const gmailUtils = {
     return connection
   },
 
-  async getConnectionById(connectionId: string) {
-    try {
-      const docRef = doc(db, 'gmail_connections', connectionId)
-      const docSnap = await getDoc(docRef)
-      
-      if (!docSnap.exists()) {
-        return null
-      }
-
-      return {
-        id: docSnap.id,
-        ...docSnap.data()
-      }
-    } catch (error) {
-      console.error('Error getting Gmail connection:', error)
-      throw error
-    }
+  async getConnectionById(connectionId: string): Promise<GmailConnection | null> {
+    const connectionRef = doc(db, 'gmail_connections', connectionId)
+    const snapshot = await getDoc(connectionRef)
+    if (!snapshot.exists()) return null
+    return {
+      id: snapshot.id,
+      ...snapshot.data()
+    } as GmailConnection
   }
 } 

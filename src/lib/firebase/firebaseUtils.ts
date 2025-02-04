@@ -1,4 +1,4 @@
-import { auth, db, storage } from "./firebase";
+import { auth, db, storage } from "@/app/lib/firebase/firebase";
 import {
   signOut,
   GoogleAuthProvider,

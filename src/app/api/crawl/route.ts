@@ -3,8 +3,15 @@ import * as cheerio from 'cheerio'
 import { logsUtils } from '@/app/lib/firebase/logsUtils'
 
 export async function POST(req: Request) {
+  let url: string = ''
+  let workspaceId: string = ''
+  let agentId: string = ''
+
   try {
-    const { url, workspaceId, agentId } = await req.json()
+    const body = await req.json()
+    url = body.url
+    workspaceId = body.workspaceId
+    agentId = body.agentId
 
     // Log the start of crawling
     console.log(`Starting crawl of URL: ${url}`)
@@ -171,7 +178,7 @@ export async function POST(req: Request) {
     await logsUtils.addLog({
       type: 'crawl',
       status: 'failed',
-      details: `Error processing ${url}`,
+      details: `Error processing ${url || 'unknown URL'}`,
       response: error instanceof Error ? error.message : 'Unknown error',
       workspaceId,
       agentId

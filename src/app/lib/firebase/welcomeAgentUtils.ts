@@ -3,6 +3,7 @@ import { collection, doc, setDoc, getDoc, getDocs, query, where, deleteDoc, orde
 import { WelcomeAgent } from '../types/welcome-agent'
 import { gmailUtils } from '@/app/lib/firebase/gmailUtils'
 import { emailHistoryUtils } from '@/app/lib/firebase/emailHistoryUtils'
+import { logsUtils } from '@/app/lib/firebase/logsUtils'
 
 const COLLECTION_NAME = 'welcomeAgents'
 
@@ -251,22 +252,25 @@ export const welcomeAgentUtils = {
           subject: emailDetails.subject,
           body: emailDetails.body,
           status,
-          userInfo: userInfoResponse,    // Store the AI response about the user
-          businessInfo: businessInfoResponse,  // Store the AI response about the business
-          ...(gmailConnection?.id ? { gmailConnectionId: gmailConnection.id } : {})
+          gmailConnectionId: agent.configuration?.emailAccount,
+          userInfo,
+          businessInfo
         })
 
-        // Only send immediately if review is NOT required
-        if (!shouldReview && gmailConnection) {
-          await gmailUtils.sendEmail({
-            to: signupInfo.email || signupInfo.rawContent.email,
-            subject: emailDetails.subject,
-            body: emailDetails.body,
-            connectionId: gmailConnection.id
-          })
-        }
+        // Log the email generation
+        await logsUtils.addLog({
+          type: 'email',
+          status: 'success',  // Use 'success' instead of 'under_review'
+          details: `Generated email for ${signupInfo.email || signupInfo.rawContent.email}`,
+          workspaceId: agent.workspaceId,
+          agentId: agent.id
+        })
 
-        console.log(`Email ${shouldReview ? 'queued for review' : 'sent'} with ID: ${emailId}`)
+        return {
+          id: emailId,
+          ...emailDetails,
+          status
+        }
       } catch (recordError) {
         console.error('Error recording email:', recordError)
       }

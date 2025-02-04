@@ -77,7 +77,7 @@ const presetDirectives = [
   {
     value: "super-short",
     label: "Super short email",
-    content: "Generate a super-short, personalized email (1-2 sentences and only 1 paragraph). End with this exact call to action: 'Want me to send over some more info?'."
+    content: "Generate a super-short, personalized email (1-2 sentences and only 1 paragraph). End with this exact call to action: &apos;Want me to send over some more info?&apos;."
   },
   { 
     value: "fully-custom", 
@@ -86,11 +86,14 @@ const presetDirectives = [
   },
 ]
 
+type EmailGenerationStep = 'user-info' | 'business-info' | 'email-body' | 'subject-line'
+type GenerationStep = Exclude<EmailGenerationStep, 'subject-line'> | null
+
 export default function WelcomeAgentNew() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const editId = searchParams.get('edit')
-  const shouldOpenConfigure = searchParams.get('configure') === 'true'
+  const editId = searchParams?.get('edit') || undefined
+  const shouldOpenConfigure = searchParams?.get('configure') === 'true'
   const { workspace } = useWorkspace()
   const { toast } = useToast()
   const { user, isReady } = useAuth()
@@ -127,7 +130,7 @@ export default function WelcomeAgentNew() {
     businessWebsite?: boolean;
   }>({})
   const [websiteSummary, setWebsiteSummary] = useState<string>('')
-  const [generationStep, setGenerationStep] = useState<'user-info' | 'business-info' | 'email-body' | 'subject-line' | null>(null)
+  const [generationStep, setGenerationStep] = useState<GenerationStep>(null)
   const [isEmailAccountOpen, setIsEmailAccountOpen] = useState(true)
   const [isNewContactsOpen, setIsNewContactsOpen] = useState(false)
   const [isAdditionalSettingsOpen, setIsAdditionalSettingsOpen] = useState(false)
@@ -239,7 +242,7 @@ export default function WelcomeAgentNew() {
     }
 
     loadAgent()
-  }, [editId])
+  }, [editId, toast])
 
   // Check for changes whenever relevant values change
   useEffect(() => {
@@ -290,7 +293,7 @@ export default function WelcomeAgentNew() {
     }
 
     loadConnectedAccounts()
-  }, [isReady, workspace?.id, selectedEmailAccount])
+  }, [isReady, workspace?.id, selectedEmailAccount, toast])
 
   const handleNavigateAway = (action: () => void) => {
     if (hasUnsavedChanges) {
@@ -371,6 +374,16 @@ export default function WelcomeAgentNew() {
     setIsSignupInfoDialogOpen(true)
   }
 
+  useEffect(() => {
+    if (Object.keys(validationErrors).length > 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      })
+    }
+  }, [validationErrors, toast])
+
   const generateEmailPreview = async () => {
     setIsSignupInfoDialogOpen(false)
     setGenerationStep('user-info')
@@ -385,7 +398,13 @@ export default function WelcomeAgentNew() {
         additionalContext: businessInfo.context
       },
       agentId: editId,
-      onStepChange: (step) => setGenerationStep(step)
+      onStepChange: (step: EmailGenerationStep) => {
+        if (step === 'subject-line') {
+          setGenerationStep(null)
+        } else {
+          setGenerationStep(step)
+        }
+      }
     })
 
     if (email) {
@@ -418,7 +437,7 @@ export default function WelcomeAgentNew() {
   }
 
   // Update the handleSave function to include settings
-  const handleSave = async (action: 'publish' | 'draft') => {
+  const handleSave = async (action: 'published' | 'draft') => {
     console.log('Starting save process...', { workspace, action })
 
     if (!workspace?.id) {
@@ -435,7 +454,7 @@ export default function WelcomeAgentNew() {
     setValidationErrors({})
 
     // Only validate required fields when publishing
-    if (action === 'publish') {
+    if (action === 'published') {
       const errors: typeof validationErrors = {}
 
       if (!agentName.trim()) {
@@ -550,7 +569,7 @@ export default function WelcomeAgentNew() {
       setHasUnsavedChanges(false)
       toast({
         title: "Success",
-        description: `Welcome agent ${action === 'publish' ? 'published' : 'saved as draft'}`,
+        description: `Welcome agent ${action === 'published' ? 'published' : 'saved as draft'}`,
         variant: "default"
       })
 
@@ -568,7 +587,7 @@ export default function WelcomeAgentNew() {
   // Update the save handlers for the buttons
   const handleSaveAndPublish = () => {
     console.log('Attempting to save and publish...')
-    handleSave('publish')
+    handleSave('published')
   }
   
   const handleSaveAsDraft = () => {
@@ -724,7 +743,7 @@ export default function WelcomeAgentNew() {
     }
 
     setupNotificationEmail()
-  }, [workspace?.id, editId])
+  }, [workspace?.id, editId, toast])
 
   return (
     <div className="min-h-screen w-full bg-zinc-900 flex items-center justify-center p-4">
@@ -951,7 +970,7 @@ export default function WelcomeAgentNew() {
           <DialogHeader>
             <DialogTitle>Try testing with real signup data!</DialogTitle>
             <DialogDescription>
-              Enter actual user information to generate a personalized email preview. Don't worry, no emails will be sent during this test.
+              Enter actual user information to generate a personalized email preview. Don&apos;t worry, no emails will be sent during this test.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -1083,9 +1102,9 @@ export default function WelcomeAgentNew() {
                 onToggle={() => setIsNewContactsOpen(prev => !prev)}
               >
                 <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    We'll provide you with a unique email address. Add this to your existing signup form as a notification email.
-                    Whenever someone signs up, we'll receive their details and automatically create a personalized welcome email.
+                  <p className="text-sm text-gray-500">
+                    We&apos;ll provide you with a unique email address. Add this to your existing signup form as a notification email.
+                    Whenever someone signs up, we&apos;ll receive their details and automatically create a personalized welcome email.
                   </p>
                   
                   {notificationEmail ? (

@@ -29,4 +29,5 @@ export interface WelcomeAgent {
     subject: string
     body: string
   }
+  emailsSentToday?: number
 } 

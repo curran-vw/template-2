@@ -146,7 +146,7 @@ export default function WelcomeAgentList() {
     }
 
     loadAgents()
-  }, [workspace?.id])
+  }, [workspace?.id, toast, workspaceLoading])
 
   const handleDeleteClick = (agent: WelcomeAgent) => {
     setAgentToDelete(agent)
@@ -232,7 +232,7 @@ export default function WelcomeAgentList() {
             <TabsContent value="active">
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {agents
-                  .filter(agent => agent.status === 'publish')
+                  .filter(agent => agent.status === 'published')
                   .map((agent) => (
                     <AgentCard 
                       key={agent.id} 
@@ -267,7 +267,7 @@ export default function WelcomeAgentList() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the welcome agent "{agentToDelete?.name}".
+              This will permanently delete the welcome agent &quot;{agentToDelete?.name}&quot;.
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -296,7 +296,7 @@ function AgentCard({ agent, onEdit, onDelete }: {
 
   const handleEmailHistory = () => {
     if (agent.id) {
-      console.log('Navigating to email history for agent:', agent.id) // Debug log
+      console.log('Navigating to email history for agent:', agent.id)
       router.push(`/email-history?agentId=${agent.id}`)
     }
   }
@@ -353,12 +353,12 @@ function AgentCard({ agent, onEdit, onDelete }: {
       <CardContent className="border-t pt-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className={`h-2 w-2 rounded-full ${agent.status === 'publish' ? 'bg-green-500' : 'bg-yellow-500'}`} />
-            <span className="text-sm capitalize">{agent.status === 'publish' ? 'active' : 'draft'}</span>
+            <div className={`h-2 w-2 rounded-full ${agent.status === 'published' ? 'bg-green-500' : 'bg-yellow-500'}`} />
+            <span className="text-sm capitalize">{agent.status === 'published' ? 'active' : 'draft'}</span>
           </div>
-          {agent.status === 'publish' && (
+          {agent.status === 'published' && agent.emailsSentToday !== undefined && (
             <div className="text-sm text-gray-500">
-              {agent.emailsSentToday || 0} emails sent today
+              {agent.emailsSentToday} emails sent today
             </div>
           )}
         </div>

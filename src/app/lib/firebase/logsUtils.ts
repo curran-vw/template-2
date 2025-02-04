@@ -6,7 +6,7 @@ const COLLECTION_NAME = 'logs'
 export const logsUtils = {
   async addLog(data: {
     type: 'api' | 'crawl' | 'email'
-    status: 'success' | 'failed'
+    status: 'success' | 'failed' | 'pending'
     details: string
     response?: string
     workspaceId?: string

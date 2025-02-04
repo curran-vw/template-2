@@ -10,6 +10,7 @@ import { welcomeAgentUtils } from '@/app/lib/firebase/welcomeAgentUtils'
 import Link from 'next/link'
 import { ArrowRight, Mail, Users, Bot, Inbox, Activity, AlertCircle } from 'lucide-react'
 import Image from 'next/image'
+import { WelcomeAgent } from '@/app/lib/types/welcome-agent'
 
 interface DashboardStats {
   totalEmails: number
@@ -125,8 +126,10 @@ export default function Dashboard() {
             }
           })
 
-        // Add agent creation events if available
-        const activeAgents = agents.filter(agent => !agent.isArchived)
+        // Filter agents to get only published ones
+        const activeAgents = agents.filter((agent: WelcomeAgent) => {
+          return agent.status === 'published';
+        });
 
         setStats({
           totalEmails: totalSentEmails,

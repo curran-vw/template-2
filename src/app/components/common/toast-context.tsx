@@ -3,18 +3,25 @@
 import React, { createContext, useContext, useState, useCallback } from 'react'
 import type { ToastProps } from './toast'
 
+interface ExtendedToastProps extends ToastProps {
+  id: string;
+  title?: string;
+  description?: string;
+  variant?: 'default' | 'destructive';
+}
+
 interface ToastContextType {
-  toasts: ToastProps[]
-  addToast: (toast: Omit<ToastProps, 'id'>) => void
+  toasts: ExtendedToastProps[]
+  addToast: (toast: Omit<ExtendedToastProps, 'id'>) => void
   removeToast: (id: string) => void
 }
 
 export const ToastContext = createContext<ToastContextType | undefined>(undefined)
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
-  const [toasts, setToasts] = useState<ToastProps[]>([])
+  const [toasts, setToasts] = useState<ExtendedToastProps[]>([])
 
-  const addToast = useCallback((toast: Omit<ToastProps, 'id'>) => {
+  const addToast = useCallback((toast: Omit<ExtendedToastProps, 'id'>) => {
     const id = Math.random().toString(36).substr(2, 9)
     setToasts((prev) => [...prev, { ...toast, id }])
     setTimeout(() => {

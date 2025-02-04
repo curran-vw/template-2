@@ -20,7 +20,7 @@ import { logsUtils } from '@/app/lib/firebase/logsUtils'
 import { Button } from "@/app/components/common/button"
 import { useToast } from "@/app/components/common/use-toast"
 import { onSnapshot, query, collection, orderBy, limit } from 'firebase/firestore'
-import { db } from '@/lib/firebase/firebase'
+import { db } from '@/app/lib/firebase/firebase'
 import {
   AlertDialog,
   AlertDialogContent,

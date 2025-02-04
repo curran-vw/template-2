@@ -23,6 +23,16 @@ export default function Sidebar({ onCollapse, isMobileOpen, onMobileClose }: Sid
     onCollapse?.(newCollapsed);
   };
 
+  const isPathActive = (path: string) => {
+    if (!pathname) return false;
+    return pathname === path;
+  };
+
+  const isPathStartsWith = (path: string) => {
+    if (!pathname) return false;
+    return pathname.startsWith(path);
+  };
+
   return (
     <div className={cn(
       "fixed lg:sticky lg:top-0 flex flex-col bg-zinc-900 text-white h-screen",
@@ -67,16 +77,16 @@ export default function Sidebar({ onCollapse, isMobileOpen, onMobileClose }: Sid
           icon={LayoutDashboard} 
           label="Dashboard" 
           href="/dashboard"
-          active={pathname === '/dashboard'} 
+          active={isPathActive('/dashboard')} 
           collapsed={collapsed} 
         />
         <NavItemWithChildren 
           icon={Mail} 
           label="Welcome Agent" 
           collapsed={collapsed}
-          active={pathname.startsWith('/welcome-agent')}
+          active={isPathStartsWith('/welcome-agent')}
           href="/welcome-agent"
-          children={[
+          items={[
             { label: "Add New Agent", href: "/welcome-agent/new" },
             { label: "View All Agents", href: "/welcome-agent" }
           ]}
@@ -85,14 +95,14 @@ export default function Sidebar({ onCollapse, isMobileOpen, onMobileClose }: Sid
           icon={Inbox} 
           label="Email History" 
           href="/email-history"
-          active={pathname === '/email-history'} 
+          active={isPathActive('/email-history')} 
           collapsed={collapsed} 
         />
         <NavItem 
           icon={ClipboardList} 
           label="Logs" 
           href="/logs"
-          active={pathname === '/logs'} 
+          active={isPathActive('/logs')} 
           collapsed={collapsed} 
         />
       </nav>
@@ -133,14 +143,14 @@ function NavItem({ icon: Icon, label, href, active, collapsed }: NavItemProps) {
 }
 
 interface NavItemWithChildrenProps extends Omit<NavItemProps, 'href'> {
-  children: Array<{
+  items: Array<{
     label: string
     href: string
   }>;
   href: string;
 }
 
-function NavItemWithChildren({ icon: Icon, label, collapsed, children, active, href }: NavItemWithChildrenProps) {
+function NavItemWithChildren({ icon: Icon, label, collapsed, active, href, items }: NavItemWithChildrenProps) {
   const [isOpen, setIsOpen] = useState(true)
   const router = useRouter()
   const pathname = usePathname() || ''
@@ -183,13 +193,13 @@ function NavItemWithChildren({ icon: Icon, label, collapsed, children, active, h
 
       {!collapsed && isOpen && (
         <div className="ml-6 pl-3 border-l border-zinc-800 space-y-1">
-          {children.map((child) => (
-            <Link key={child.label} href={child.href}>
+          {items.map((item) => (
+            <Link key={item.label} href={item.href}>
               <Button
                 variant="ghost"
                 className="w-full justify-start text-sm text-zinc-400 hover:text-white hover:bg-zinc-800 min-h-[32px]"
               >
-                {child.label}
+                {item.label}
               </Button>
             </Link>
           ))}
