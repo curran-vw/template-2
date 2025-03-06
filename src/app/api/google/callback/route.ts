@@ -5,9 +5,23 @@ export async function GET(request: Request) {
   const headersList = headers()
   const host = headersList.get('host')
   
-  const redirectUri = host?.includes('localhost') 
-    ? 'http://localhost:3000/api/google/callback'
-    : 'https://936f9f5e-b596-4eec-be4b-6f7f19e7f0b7-00-8nnd3a2nu6we.worf.replit.dev/api/google/callback'
+  let redirectUri = ''
+  
+  // Get the production URL from environment
+  const productionUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.welcomeagent.ai'
+  
+  if (host?.includes('localhost')) {
+    redirectUri = 'http://localhost:3000/api/google/callback'
+  } else if (host?.includes('replit.app')) {
+    // Published Replit app domain
+    redirectUri = `https://${host}/api/google/callback`
+  } else if (host?.includes('worf.replit.dev')) {
+    // Staging Replit domain for development
+    redirectUri = `https://${host}/api/google/callback`
+  } else {
+    // Production domain
+    redirectUri = `${productionUrl}/api/google/callback`
+  }
 
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET

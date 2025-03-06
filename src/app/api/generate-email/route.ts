@@ -40,7 +40,7 @@ export async function POST(req: Request) {
         const userInfoResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY || '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'}`,
+            'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
             'Content-Type': 'application/json',
             'HTTP-Referer': 'https://agentfolio.ai',
             'X-Title': 'Agentfolio'
@@ -88,7 +88,7 @@ export async function POST(req: Request) {
         const businessInfoResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY || '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'}`,
+            'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
             'Content-Type': 'application/json',
             'HTTP-Referer': 'https://agentfolio.ai',
             'X-Title': 'Agentfolio'
@@ -137,7 +137,7 @@ export async function POST(req: Request) {
         const emailBodyResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY || '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'}`,
+            'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
             'Content-Type': 'application/json',
             'HTTP-Referer': 'https://agentfolio.ai',
             'X-Title': 'Agentfolio'
@@ -156,7 +156,7 @@ export async function POST(req: Request) {
               Address the person by first name if available (but just make it general if no name is provided). 
               Sign off from the name {{placeholder for Gmail account name}}
 
-              Here's what you should do in this email: ${directive}  
+              Please use the following directive for your email. If it specifies a different length, please adjust accordingly: ${directive}
 
               Here's the context on this person: ${userInfo}  
               Here's the context on this person's business: ${businessInfo}   
@@ -195,7 +195,7 @@ export async function POST(req: Request) {
         const subjectResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY || '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'}`,
+            'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
             'Content-Type': 'application/json',
             'HTTP-Referer': 'https://agentfolio.ai',
             'X-Title': 'Agentfolio'
@@ -205,7 +205,7 @@ export async function POST(req: Request) {
             messages: [{
               role: 'user',
               content: `Write a short, email subject line for a personalized email to a new lead.
-              Make it personal and seem like it is just a casual email from someone they know. Do not use placeholders. Do not put "Subject: " before the subject line. Just write the subject line and that's it.
+              Make it personal and seem like it is just a casual email from someone they know. Do not use placeholders or emojis. Do not put "Subject: " before the subject line. Just write the subject line and that's it.
               Context about them: ${userInfo}`
             }]
           })

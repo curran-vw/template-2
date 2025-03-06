@@ -1,13 +1,6 @@
-'use client'
-
 import './globals.css';
 import { DM_Sans } from 'next/font/google';
-import { AuthProvider } from '@/app/lib/contexts/AuthContext';
-import { LayoutProvider } from './components/common/LayoutProvider';
-import { ToastProvider } from '@/app/components/common/toast-context';
-import { usePathname } from 'next/navigation';
-import { Toaster } from "@/app/components/common/toaster"
-import { WorkspaceProvider } from '@/app/lib/contexts/WorkspaceContext'
+import ClientLayout from './client-layout';
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
@@ -20,26 +13,10 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
-  const isWelcomeAgentNew = pathname === '/welcome-agent/new';
-
   return (
     <html lang="en">
       <body className={`${dmSans.className} antialiased`}>
-        <AuthProvider>
-          <WorkspaceProvider>
-            <ToastProvider>
-              {isWelcomeAgentNew ? (
-                children
-              ) : (
-                <LayoutProvider>
-                  {children}
-                </LayoutProvider>
-              )}
-              <Toaster />
-            </ToastProvider>
-          </WorkspaceProvider>
-        </AuthProvider>
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   );

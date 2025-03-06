@@ -238,9 +238,11 @@ export const welcomeAgentUtils = {
       const shouldReview = agent.configuration?.settings?.reviewBeforeSending ?? false
       const status = shouldReview ? 'under_review' : 'sent'
 
-      // Extract user and business info for the email history
-      const userInfo = extractUserInfo(signupInfo.rawContent || signupInfo)
-      const businessInfo = extractBusinessInfo(agent.businessContext)
+      // Get the Gmail connection ID
+      const senderGmailConnection = await gmailUtils.getConnectionByEmail(agent.configuration?.emailAccount || '')
+      if (!senderGmailConnection) {
+        throw new Error(`No Gmail connection found for email: ${agent.configuration?.emailAccount}`)
+      }
 
       // Create email history record with AI responses
       try {
@@ -252,9 +254,9 @@ export const welcomeAgentUtils = {
           subject: emailDetails.subject,
           body: emailDetails.body,
           status,
-          gmailConnectionId: agent.configuration?.emailAccount,
-          userInfo,
-          businessInfo
+          gmailConnectionId: senderGmailConnection.id,
+          userInfo: userInfoResponse,  // Store the AI response instead of raw input
+          businessInfo: businessInfoResponse  // Store the AI response instead of raw input
         })
 
         // Log the email generation
