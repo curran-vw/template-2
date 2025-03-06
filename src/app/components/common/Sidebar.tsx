@@ -7,6 +7,7 @@ import { useState } from "react"
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
+import { useAuth } from '@/app/lib/hooks/useAuth';
 
 interface SidebarProps {
   onCollapse?: (collapsed: boolean) => void;
@@ -17,6 +18,8 @@ interface SidebarProps {
 export default function Sidebar({ onCollapse, isMobileOpen, onMobileClose }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false)
   const pathname = usePathname()
+  const { user } = useAuth();
+  const isAdminUser = user?.email === 'curranvw@gmail.com';
 
   const handleCollapse = (newCollapsed: boolean) => {
     setCollapsed(newCollapsed);
@@ -98,13 +101,15 @@ export default function Sidebar({ onCollapse, isMobileOpen, onMobileClose }: Sid
           active={isPathActive('/email-history')} 
           collapsed={collapsed} 
         />
-        <NavItem 
-          icon={ClipboardList} 
-          label="Logs" 
-          href="/logs"
-          active={isPathActive('/logs')} 
-          collapsed={collapsed} 
-        />
+        {isAdminUser && (
+          <NavItem 
+            icon={ClipboardList} 
+            label="Logs" 
+            href="/logs"
+            active={isPathActive('/logs')} 
+            collapsed={collapsed} 
+          />
+        )}
       </nav>
     </div>
   )

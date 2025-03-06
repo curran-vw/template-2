@@ -28,6 +28,8 @@ import {
   AlertDialogTitle,
 } from "@/app/components/common/alert-dialog"
 import { X } from "lucide-react"
+import { useAuth } from '@/app/lib/hooks/useAuth'
+import { useRouter } from 'next/navigation'
 
 type LogType = 'api' | 'crawl' | 'email' | 'all'
 
@@ -41,12 +43,23 @@ interface Log {
 }
 
 export default function LogsPage() {
+  const { user } = useAuth()
+  const router = useRouter()
   const [logType, setLogType] = useState<LogType>('all')
   const [logs, setLogs] = useState<any[]>([])
   const { toast } = useToast()
   const [isResponseOpen, setIsResponseOpen] = useState(false)
   const [selectedResponse, setSelectedResponse] = useState<string | null>(null)
   const [selectedLog, setSelectedLog] = useState<Log | null>(null)
+
+  if (!user || user.email !== 'curranvw@gmail.com') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4">
+        <h1 className="text-2xl font-bold text-red-600">Access Denied</h1>
+        <p className="mt-2">You do not have permission to view this page.</p>
+      </div>
+    )
+  }
 
   useEffect(() => {
     const q = query(
