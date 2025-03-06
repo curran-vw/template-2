@@ -1,4 +1,7 @@
+'use client';
+
 import { useAuth } from '@/app/lib/hooks/useAuth';
+import { NavItem } from '@/app/components/common/NavItem';
 
 function Sidebar() {
   const { user } = useAuth();

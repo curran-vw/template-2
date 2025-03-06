@@ -50,15 +50,18 @@ export default function SignIn() {
       <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-xl shadow-lg">
         <div className="text-center">
           <div className="flex justify-center">
-            <div className="w-20 h-20 relative">
-              <Image
-                src="/logo.png"
-                alt="Logo"
-                fill
-                className="object-contain"
-                priority
-              />
-            </div>
+            <a href="https://welcomeagent.ai" target="_blank" rel="noopener noreferrer">
+              <div className="">
+                <Image
+                  src="/wa-favicon.png"
+                  alt="Welcome Agent Logo"
+                  className="object-contain"
+                  priority
+                  width={50}
+                  height={50}
+                />
+              </div>
+            </a>
           </div>
           <h2 className="mt-6 text-3xl font-bold text-gray-900">
             Welcome Back
@@ -95,11 +98,11 @@ export default function SignIn() {
         <div className="mt-6 text-center text-sm text-gray-600">
           <p>
             By signing in, you agree to our{' '}
-            <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
+            <a href="https://welcomeagent.ai/tos" className="font-medium text-blue-600 hover:text-blue-500">
               Terms of Service
             </a>{' '}
             and{' '}
-            <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
+            <a href="https://welcomeagent.ai/privacy-policy" className="font-medium text-blue-600 hover:text-blue-500">
               Privacy Policy
             </a>
           </p>

@@ -182,7 +182,7 @@ export default function WelcomeAgentList() {
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Welcome Agents</h1>
+            <h1 className="text-3xl font-bold tracking-tight">My Agents</h1>
             <p className="text-gray-500">
               Create and manage your automated welcome agents
             </p>

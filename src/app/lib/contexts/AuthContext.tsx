@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useEffect, useState } from 'react'
+import { createContext, useEffect, useState, useCallback } from 'react'
 import { User } from 'firebase/auth'
 import { auth } from '@/app/lib/firebase/firebase'
 import { onAuthStateChanged } from 'firebase/auth'
@@ -22,7 +22,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [checkedWorkspace, setCheckedWorkspace] = useState<string | null>(null)
 
   // Check if a user is new (has no workspaces) and create a default one if needed
-  const checkAndCreateDefaultWorkspace = async (user: User) => {
+  const checkAndCreateDefaultWorkspace = useCallback(async (user: User) => {
     // Skip if we've already checked for this user
     if (checkedWorkspace === user.uid) {
       console.log('Already checked workspace for user:', user.uid)
@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       console.error('Error checking workspaces:', err)
     }
-  }
+  }, [checkedWorkspace])
 
   useEffect(() => {
     // Additional check for current user on component mount
@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     
     checkCurrentUser()
-  }, [])
+  }, [checkedWorkspace, checkAndCreateDefaultWorkspace])
 
   useEffect(() => {
     console.log('Setting up auth listener...')
@@ -102,7 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('Cleaning up auth listener...')
       unsubscribe()
     }
-  }, [checkedWorkspace]) // Add checkedWorkspace to dependency array
+  }, [checkAndCreateDefaultWorkspace]) // Include checkAndCreateDefaultWorkspace in dependencies
 
   return (
     <AuthContext.Provider value={{ user, loading }}>

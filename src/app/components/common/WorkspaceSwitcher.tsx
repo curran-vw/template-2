@@ -109,7 +109,7 @@ export function WorkspaceSwitcher() {
             <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </DropdownMenu.Trigger>
-        <DropdownMenu.Content className="w-[--radix-dropdown-menu-trigger-width] bg-white rounded-md border p-1 shadow-md">
+        <DropdownMenu.Content className="w-[--radix-dropdown-menu-trigger-width] bg-white rounded-md border p-1 shadow-md z-50">
           <div className="max-h-[300px] overflow-y-auto">
             {workspaces.map((item) => (
               <DropdownMenu.Item

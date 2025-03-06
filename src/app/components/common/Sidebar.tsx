@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { useAuth } from '@/app/lib/hooks/useAuth';
+import Image from 'next/image';
 
 interface SidebarProps {
   onCollapse?: (collapsed: boolean) => void;
@@ -46,13 +47,19 @@ export default function Sidebar({ onCollapse, isMobileOpen, onMobileClose }: Sid
       isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
     )}>
       <div className="flex items-center justify-between p-4 border-b border-zinc-800">
-        <h1 className={cn(
+        <Link href="/dashboard" className={cn(
           "font-medium tracking-wide",
           "transition-[width,opacity] duration-200 ease-in-out",
           collapsed ? "opacity-0 w-0" : "opacity-100 w-auto"
         )}>
-          LOGO
-        </h1>
+          <Image 
+            src="/WA-Sidebar-logo.webp"
+            alt="Welcome Agent"
+            width={40}
+            height={40}
+            
+          />
+        </Link>
         <div className="flex items-center gap-2">
           <button
             onClick={onMobileClose}

@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { Workspace } from '@/lib/types/workspace';
-import { deleteWorkspace, inviteUserToWorkspace, updateWorkspaceName } from '@/lib/firebase/workspaceUtils';
+import { deleteWorkspace, inviteUserToWorkspace, updateWorkspaceName } from '@/app/lib/firebase/workspaceUtils';
 import { Loader2, Mail, Trash2, X, Pencil, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from './input';
 import { useToast } from './use-toast';
 import { useWorkspace } from '@/app/lib/hooks/useWorkspace';
 import { Button } from './button';
-import { useAuth } from '@/lib/hooks/useAuth';
+import { useAuth } from '@/app/lib/hooks/useAuth';
 
 interface WorkspaceSettingsProps {
   workspace: Workspace;
@@ -55,6 +55,15 @@ export function WorkspaceSettings({ workspace, onClose, onDelete }: WorkspaceSet
 
     setIsSaving(true);
     try {
+      if (!user) {
+        toast({
+          title: "Error",
+          description: "You must be logged in to update workspace name",
+          variant: "destructive"
+        });
+        return;
+      }
+
       const success = await updateWorkspaceName(workspace.id, newName.trim(), user.uid);
       
       if (!success) {

@@ -59,15 +59,6 @@ export default function LogsPage() {
     hasPreviousPage: false
   })
 
-  if (!user || user.email !== 'curranvw@gmail.com') {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <h1 className="text-2xl font-bold text-red-600">Access Denied</h1>
-        <p className="mt-2">You do not have permission to view this page.</p>
-      </div>
-    )
-  }
-
   // Function to load logs
   const loadLogs = async () => {
     try {
@@ -121,6 +112,16 @@ export default function LogsPage() {
       setSelectedResponse('No response data available')
     }
     setIsResponseOpen(true)
+  }
+  
+  // Check access after all hooks are defined
+  if (!user || user.email !== 'curranvw@gmail.com') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4">
+        <h1 className="text-2xl font-bold text-red-600">Access Denied</h1>
+        <p className="mt-2">You do not have permission to view this page.</p>
+      </div>
+    )
   }
 
   return (
