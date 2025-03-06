@@ -70,7 +70,7 @@ export const emailHistoryUtils = {
       })) as EmailRecord[]
 
       return {
-        emails: snapshot.docs.map(doc => ({
+        emails: paginatedDocs.map(doc => ({
           id: doc.id,
           ...doc.data(),
           createdAt: (doc.data().createdAt as Timestamp).toDate()

@@ -99,7 +99,7 @@ export default function EmailHistory() {
     if (workspace?.id) {
       loadEmails()
     }
-  }, [workspace?.id, loadEmails])
+  }, [workspace?.id, loadEmails, currentPage])
 
   const handleApprove = async (emailId: string) => {
     try {
