@@ -4,25 +4,44 @@ import { useAuth } from '@/lib/hooks/useAuth';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { useWorkspace } from '@/app/lib/hooks/useWorkspace';
 
 export default function SignIn() {
-  const { user, signInWithGoogle } = useAuth();
+  const { user, signInWithGoogle, loading } = useAuth();
+  const { refreshWorkspaces } = useWorkspace();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [isSigningIn, setIsSigningIn] = useState(false);
 
   useEffect(() => {
     if (user) {
-      router.push('/dashboard');
+      console.log('User authenticated, attempting to refresh workspaces before redirect');
+      const redirectToDashboard = async () => {
+        try {
+          await refreshWorkspaces();
+          console.log('Workspaces refreshed, redirecting to dashboard');
+          router.push('/dashboard');
+        } catch (error) {
+          console.error('Error refreshing workspaces:', error);
+          // Still redirect even if workspace refresh fails
+          router.push('/dashboard');
+        }
+      };
+      
+      redirectToDashboard();
     }
-  }, [user, router]);
+  }, [user, router, refreshWorkspaces]);
 
   const handleSignIn = async () => {
     try {
       setError(null);
+      setIsSigningIn(true);
       await signInWithGoogle();
     } catch (err) {
       console.error('Sign in error:', err);
       setError('Failed to sign in with Google. Please try again.');
+    } finally {
+      setIsSigningIn(false);
     }
   };
 
@@ -52,7 +71,8 @@ export default function SignIn() {
         <div className="mt-8">
           <button
             onClick={handleSignIn}
-            className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-md shadow-sm bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
+            disabled={isSigningIn || loading}
+            className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-md shadow-sm bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
           >
             <Image
               src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
@@ -60,7 +80,9 @@ export default function SignIn() {
               width={20}
               height={20}
             />
-            <span className="text-sm font-medium">Continue with Google</span>
+            <span className="text-sm font-medium">
+              {isSigningIn ? 'Signing in...' : 'Continue with Google'}
+            </span>
           </button>
           
           {error && (

@@ -9,8 +9,7 @@ import { cn } from "@/app/lib/utils"
 import * as Dialog from '@radix-ui/react-dialog'
 import { Input } from "./input"
 import { useAuth } from "@/lib/hooks/useAuth"
-import { db } from "@/app/lib/firebase/firebase"
-import { collection, addDoc, getDocs, query, where } from "firebase/firestore"
+import { createWorkspace } from "@/app/lib/firebase/workspaceUtils"
 import { WorkspaceSettings } from './WorkspaceSettings'
 import { useToast } from "../common/use-toast"
 import { Workspace } from "@/lib/types/workspace"
@@ -61,18 +60,8 @@ export function WorkspaceSwitcher() {
         return
       }
 
-      const newWorkspace: Omit<Workspace, 'id'> = {
-        name: newWorkspaceName.trim(),
-        ownerId: user.uid,
-        members: [user.uid],
-        createdAt: new Date().toISOString()
-      }
-
-      const docRef = await addDoc(collection(db, 'workspaces'), newWorkspace)
-      const createdWorkspace: Workspace = {
-        id: docRef.id,
-        ...newWorkspace
-      }
+      // Use the workspaceUtils function instead of directly adding to Firestore
+      const createdWorkspace = await createWorkspace(newWorkspaceName.trim(), user.uid)
 
       await refreshWorkspaces()
       setWorkspace(createdWorkspace)
@@ -105,73 +94,75 @@ export function WorkspaceSwitcher() {
   }
 
   return (
-    <>
+    <div className="w-full">
       <DropdownMenu.Root open={open} onOpenChange={setOpen}>
         <DropdownMenu.Trigger asChild>
-          <Button variant="outline" role="combobox" className="w-[200px] justify-between">
-            {workspace?.name || "Select workspace"}
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="w-full justify-between"
+          >
+            <span className="line-clamp-1 mr-2">
+              {workspace?.name || "Select a workspace"}
+            </span>
+            <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </DropdownMenu.Trigger>
-        <DropdownMenu.Portal>
-          <DropdownMenu.Content className="z-50 min-w-[200px] bg-white rounded-md shadow-lg p-1">
-            {workspaces.length > 0 ? (
-              workspaces.map((ws) => (
-                <DropdownMenu.Item
-                  key={ws.id}
-                  onClick={() => setWorkspace(ws)}
+        <DropdownMenu.Content className="w-[--radix-dropdown-menu-trigger-width] bg-white rounded-md border p-1 shadow-md">
+          <div className="max-h-[300px] overflow-y-auto">
+            {workspaces.map((item) => (
+              <DropdownMenu.Item
+                key={item.id}
+                className={cn(
+                  "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none",
+                  "data-[highlighted]:bg-gray-100 data-[highlighted]:text-gray-900",
+                  workspace?.id === item.id && "bg-gray-100"
+                )}
+                onSelect={() => {
+                  setWorkspace(item)
+                  setOpen(false)
+                }}
+              >
+                <Check
                   className={cn(
-                    "flex items-center justify-between px-2 py-2 text-sm cursor-pointer hover:bg-gray-100 rounded-sm group outline-none",
-                    workspace?.id === ws.id && "font-medium"
+                    "mr-2 h-4 w-4",
+                    workspace?.id === item.id ? "opacity-100" : "opacity-0"
                   )}
-                >
-                  <div className="flex items-center flex-1">
-                    <Check
-                      className={cn(
-                        "mr-2 h-4 w-4",
-                        workspace?.id === ws.id ? "opacity-100" : "opacity-0"
-                      )}
-                    />
-                    {ws.name}
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={cn(
-                      "ml-2 h-8 w-8 p-0",
-                      "opacity-0 group-hover:opacity-100 transition-opacity"
-                    )}
+                />
+                <span className="line-clamp-1">{item.name}</span>
+                {workspace?.id === item.id && (
+                  <button
+                    className="ml-auto opacity-70 hover:opacity-100"
                     onClick={(e) => {
-                      e.stopPropagation();
-                      setWorkspace(ws);
-                      setShowSettingsDialog(true);
-                      setOpen(false);
+                      e.stopPropagation()
+                      setShowSettingsDialog(true)
+                      setOpen(false)
                     }}
                   >
                     <Settings className="h-4 w-4" />
-                  </Button>
-                </DropdownMenu.Item>
-              ))
-            ) : (
-              <DropdownMenu.Item
-                className="px-2 py-2 text-sm text-gray-500"
-                disabled
-              >
-                No workspaces found
+                  </button>
+                )}
               </DropdownMenu.Item>
-            )}
-            <DropdownMenu.Separator className="h-px bg-gray-200 my-1" />
-            <DropdownMenu.Item
-              onClick={() => setShowCreateDialog(true)}
-              className="flex items-center px-2 py-2 text-sm cursor-pointer hover:bg-gray-100 rounded-sm outline-none"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Create New Workspace
-            </DropdownMenu.Item>
-          </DropdownMenu.Content>
-        </DropdownMenu.Portal>
+            ))}
+          </div>
+          
+          <DropdownMenu.Separator className="mx-1 my-1 h-px bg-gray-200" />
+          
+          <DropdownMenu.Item
+            className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm text-blue-600 outline-none data-[highlighted]:bg-gray-100 data-[highlighted]:text-blue-700"
+            onSelect={() => {
+              setShowCreateDialog(true)
+              setOpen(false)
+            }}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Create Workspace
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
       </DropdownMenu.Root>
 
+      {/* Create Workspace Dialog */}
       <Dialog.Root open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-sm" />
@@ -221,13 +212,13 @@ export function WorkspaceSwitcher() {
       </Dialog.Root>
 
       {/* Workspace Settings Dialog */}
-      {workspace && showSettingsDialog && (
+      {showSettingsDialog && workspace && (
         <WorkspaceSettings
           workspace={workspace}
           onClose={() => setShowSettingsDialog(false)}
           onDelete={handleWorkspaceDeleted}
         />
       )}
-    </>
+    </div>
   )
 } 

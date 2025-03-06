@@ -9,6 +9,7 @@ import { Input } from './input';
 import { useToast } from './use-toast';
 import { useWorkspace } from '@/app/lib/hooks/useWorkspace';
 import { Button } from './button';
+import { useAuth } from '@/lib/hooks/useAuth';
 
 interface WorkspaceSettingsProps {
   workspace: Workspace;
@@ -18,6 +19,7 @@ interface WorkspaceSettingsProps {
 
 export function WorkspaceSettings({ workspace, onClose, onDelete }: WorkspaceSettingsProps) {
   const { workspaces, refreshWorkspaces, setWorkspace } = useWorkspace()
+  const { user } = useAuth();
   const { toast } = useToast()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -31,7 +33,7 @@ export function WorkspaceSettings({ workspace, onClose, onDelete }: WorkspaceSet
   const isLastWorkspace = workspaces.length === 1;
 
   const handleNameSave = async () => {
-    if (!newName.trim() || newName === workspace.name) {
+    if (!user || !newName.trim() || newName === workspace.name) {
       setIsEditing(false);
       setNewName(workspace.name);
       return;
@@ -53,7 +55,19 @@ export function WorkspaceSettings({ workspace, onClose, onDelete }: WorkspaceSet
 
     setIsSaving(true);
     try {
-      await updateWorkspaceName(workspace.id, newName.trim());
+      const success = await updateWorkspaceName(workspace.id, newName.trim(), user.uid);
+      
+      if (!success) {
+        toast({
+          title: "Access Denied",
+          description: "You don't have permission to update this workspace name",
+          variant: "destructive"
+        });
+        setIsEditing(false);
+        setNewName(workspace.name);
+        return;
+      }
+      
       await refreshWorkspaces();
       
       // Update the current workspace with the new name
@@ -82,21 +96,42 @@ export function WorkspaceSettings({ workspace, onClose, onDelete }: WorkspaceSet
   };
 
   const handleInviteUser = async () => {
-    if (!inviteEmail.trim()) return;
+    if (!user || !inviteEmail.trim()) return;
     
     setIsInviting(true);
     setError(null);
     try {
-      await inviteUserToWorkspace(workspace.id, inviteEmail);
+      const result = await inviteUserToWorkspace(workspace.id, inviteEmail, user.uid);
+      
+      if (!result) {
+        toast({
+          title: "Access Denied",
+          description: "You don't have permission to invite users to this workspace",
+          variant: "destructive"
+        });
+        return;
+      }
+      
       setInviteEmail('');
+      toast({
+        title: "Success",
+        description: "Invitation sent successfully"
+      });
     } catch (err) {
       setError('Failed to send invite. Please try again.');
+      toast({
+        title: "Error",
+        description: "Failed to send invitation",
+        variant: "destructive"
+      });
     } finally {
       setIsInviting(false);
     }
   };
 
   const handleDelete = async () => {
+    if (!user) return;
+    
     if (isLastWorkspace) {
       toast({
         title: "Cannot Delete Workspace",
@@ -113,7 +148,18 @@ export function WorkspaceSettings({ workspace, onClose, onDelete }: WorkspaceSet
         setWorkspace(nextWorkspace);
       }
 
-      await deleteWorkspace(workspace.id);
+      const success = await deleteWorkspace(workspace.id, user.uid);
+      
+      if (!success) {
+        toast({
+          title: "Access Denied",
+          description: "You don't have permission to delete this workspace",
+          variant: "destructive"
+        });
+        setIsDeleting(false);
+        return;
+      }
+      
       await refreshWorkspaces();
       
       toast({
@@ -255,24 +301,21 @@ export function WorkspaceSettings({ workspace, onClose, onDelete }: WorkspaceSet
               </>
             ) : (
               <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-red-600">Delete this workspace</p>
-                  <p className="text-sm text-red-500 mt-1">
-                    {isLastWorkspace 
-                      ? "You cannot delete your last workspace."
-                      : "Once you delete a workspace, there is no going back."}
+                <div>
+                  <h4 className="text-sm font-medium text-red-800">Delete this workspace</h4>
+                  <p className="text-xs text-red-600 mt-1">
+                    This will permanently delete the workspace and all associated data.
                   </p>
                 </div>
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
                   disabled={isLastWorkspace}
                   className={cn(
-                    "px-4 py-2 rounded-md text-sm font-medium text-red-600 hover:bg-red-100",
-                    "flex items-center gap-2 ml-4",
+                    "px-4 py-2 rounded-md text-sm font-medium bg-white border border-red-300 text-red-600 hover:bg-red-50",
                     "disabled:opacity-50 disabled:cursor-not-allowed"
                   )}
+                  title={isLastWorkspace ? "You must have at least one workspace" : undefined}
                 >
-                  <Trash2 className="h-4 w-4" />
                   Delete
                 </button>
               </div>

@@ -14,7 +14,7 @@ interface WorkspaceContextType {
   workspaces: Workspace[]
   loading: boolean
   error: Error | null
-  refreshWorkspaces: () => void
+  refreshWorkspaces: () => Promise<void>
 }
 
 export const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined)
@@ -32,13 +32,27 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
+  // Track if we've loaded workspaces at least once
+  const [hasLoadedWorkspaces, setHasLoadedWorkspaces] = useState(false)
+  // Track the last time we loaded workspaces
+  const [lastLoadTime, setLastLoadTime] = useState(0)
 
   // Wrapper for setWorkspace that also updates localStorage
   const setWorkspace = useCallback((newWorkspace: Workspace | null) => {
-    setWorkspaceState(newWorkspace)
-    if (newWorkspace?.id) {
-      localStorage.setItem(WORKSPACE_STORAGE_KEY, newWorkspace.id)
-    } else {
+    // Ensure the user has access to this workspace before setting it
+    if (newWorkspace && auth.currentUser) {
+      // Only allow setting if user is a member of the workspace
+      if (newWorkspace.members.includes(auth.currentUser.uid)) {
+        setWorkspaceState(newWorkspace)
+        if (newWorkspace.id) {
+          localStorage.setItem(WORKSPACE_STORAGE_KEY, newWorkspace.id)
+        }
+      } else {
+        console.error('Access denied: User is not a member of this workspace')
+        return
+      }
+    } else if (newWorkspace === null) {
+      setWorkspaceState(null)
       localStorage.removeItem(WORKSPACE_STORAGE_KEY)
     }
   }, [])
@@ -46,6 +60,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const loadWorkspaces = useCallback(async (userId: string) => {
     try {
       console.log('Loading workspaces for user:', userId)
+      // Only get workspaces where the user is a member
       const workspacesQuery = query(
         collection(db, 'workspaces'),
         where('members', 'array-contains', userId)
@@ -64,6 +79,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       
       console.log('Loaded workspaces:', workspacesList)
       setWorkspaces(workspacesList)
+      setHasLoadedWorkspaces(true)
+      setLastLoadTime(Date.now())
 
       // Get the last selected workspace ID from localStorage
       const lastWorkspaceId = localStorage.getItem(WORKSPACE_STORAGE_KEY)
@@ -77,7 +94,20 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         // If the last workspace exists in the list, use it; otherwise use the first workspace
         if (!workspace) {
           setWorkspace(lastWorkspace || workspacesList[0])
+        } else {
+          // Verify current workspace is still valid for this user
+          const isCurrentWorkspaceValid = workspacesList.some(w => 
+            w.id === workspace.id && w.members.includes(userId)
+          )
+          
+          if (!isCurrentWorkspaceValid) {
+            // If current workspace is no longer valid, switch to another one
+            setWorkspace(workspacesList[0])
+          }
         }
+      } else {
+        // User has no workspaces, clear current workspace
+        setWorkspace(null)
       }
     } catch (err) {
       console.error('Error loading workspaces:', err)
@@ -93,6 +123,28 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     }
   }, [loadWorkspaces])
 
+  // Set up a regular refresh interval for workspaces
+  useEffect(() => {
+    const checkForWorkspaces = async () => {
+      const user = auth.currentUser
+      if (user) {
+        // If it's been more than 2 seconds since we last loaded workspaces, or we haven't loaded them yet
+        const now = Date.now()
+        if (!hasLoadedWorkspaces || now - lastLoadTime > 2000) {
+          console.log('Refreshing workspaces on interval check')
+          await loadWorkspaces(user.uid)
+        }
+      }
+    }
+
+    // Check immediately and then every 3 seconds for new workspaces
+    // This helps ensure we pick up any workspaces created in AuthContext
+    const interval = setInterval(checkForWorkspaces, 3000)
+    checkForWorkspaces()
+
+    return () => clearInterval(interval)
+  }, [hasLoadedWorkspaces, lastLoadTime, loadWorkspaces])
+
   useEffect(() => {
     console.log('WorkspaceProvider: Setting up auth listener')
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
@@ -102,6 +154,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       } else {
         console.log('WorkspaceProvider: No user, clearing workspaces')
         setWorkspaces([])
+        setHasLoadedWorkspaces(false)
         // Don't clear the workspace here to persist it between sessions
       }
       setLoading(false)

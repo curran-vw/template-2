@@ -2,6 +2,7 @@ import { useContext, useEffect, useState } from 'react'
 import { AuthContext } from '@/app/lib/contexts/AuthContext'
 import { User, signInWithPopup, GoogleAuthProvider, signOut as firebaseSignOut } from 'firebase/auth'
 import { auth } from '@/app/lib/firebase/firebase'
+import { useWorkspace } from '@/app/lib/hooks/useWorkspace'
 
 interface UseAuthReturn {
   user: User | null;
@@ -13,6 +14,7 @@ interface UseAuthReturn {
 
 export function useAuth(): UseAuthReturn {
   const context = useContext(AuthContext)
+  const { refreshWorkspaces } = useWorkspace()
   const [isReady, setIsReady] = useState(false)
 
   useEffect(() => {
@@ -28,7 +30,15 @@ export function useAuth(): UseAuthReturn {
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider()
     try {
-      await signInWithPopup(auth, provider)
+      console.log('Starting Google sign-in process')
+      const result = await signInWithPopup(auth, provider)
+      console.log('Google sign-in successful, user:', result.user.uid)
+      
+      // Trigger a workspace refresh after sign-in to fetch any newly created workspaces
+      setTimeout(async () => {
+        console.log('Refreshing workspaces after sign-in')
+        await refreshWorkspaces()
+      }, 2000) // Small delay to ensure Firebase has time to create the workspace
     } catch (error) {
       console.error('Error signing in with Google:', error)
     }
@@ -36,6 +46,7 @@ export function useAuth(): UseAuthReturn {
 
   const signOut = async () => {
     try {
+      console.log('Signing out user')
       await firebaseSignOut(auth)
     } catch (error) {
       console.error('Error signing out:', error)
