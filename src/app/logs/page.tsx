@@ -16,10 +16,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/app/components/common/select"
-import { logsUtils } from '@/app/lib/firebase/logsUtils'
+import { logsUtils, LogRecord } from '@/app/lib/firebase/logsUtils'
 import { Button } from "@/app/components/common/button"
 import { useToast } from "@/app/components/common/use-toast"
-import { onSnapshot, query, collection, orderBy, limit } from 'firebase/firestore'
 import { db } from '@/app/lib/firebase/firebase'
 import {
   AlertDialog,
@@ -27,30 +26,38 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/app/components/common/alert-dialog"
-import { X } from "lucide-react"
+import { X, ChevronLeft, ChevronRight } from "lucide-react"
 import { useAuth } from '@/app/lib/hooks/useAuth'
 import { useRouter } from 'next/navigation'
+import { LoadingSpinner } from '@/app/components/common/loading-spinner'
 
 type LogType = 'api' | 'crawl' | 'email' | 'all'
 
-interface Log {
-  id: string
-  timestamp: Date
-  type: 'api' | 'crawl' | 'email'
-  status: 'success' | 'failed' | 'pending'
-  details: string
-  response?: string
-}
+// Use the LogRecord type from logsUtils
+type Log = LogRecord
 
 export default function LogsPage() {
   const { user } = useAuth()
   const router = useRouter()
   const [logType, setLogType] = useState<LogType>('all')
-  const [logs, setLogs] = useState<any[]>([])
+  const [logs, setLogs] = useState<Log[]>([])
   const { toast } = useToast()
   const [isResponseOpen, setIsResponseOpen] = useState(false)
   const [selectedResponse, setSelectedResponse] = useState<string | null>(null)
   const [selectedLog, setSelectedLog] = useState<Log | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [loading, setLoading] = useState(true)
+  const [pagination, setPagination] = useState<{
+    totalPages: number
+    totalLogs: number
+    hasNextPage: boolean
+    hasPreviousPage: boolean
+  }>({
+    totalPages: 1,
+    totalLogs: 0,
+    hasNextPage: false,
+    hasPreviousPage: false
+  })
 
   if (!user || user.email !== 'curranvw@gmail.com') {
     return (
@@ -61,28 +68,60 @@ export default function LogsPage() {
     )
   }
 
+  // Function to load logs
+  const loadLogs = async () => {
+    try {
+      setLoading(true)
+      const result = await logsUtils.getRecentLogs(currentPage, 10, logType)
+      setLogs(result.logs)
+      setPagination(result.pagination)
+    } catch (error) {
+      console.error('Error loading logs:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to load logs',
+        variant: 'destructive',
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
-    const q = query(
-      collection(db, 'logs'),
-      orderBy('timestamp', 'desc'),
-      limit(100)
-    )
+    loadLogs()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, logType])
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const newLogs = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }))
-      setLogs(newLogs)
-    })
+  // Pagination handlers
+  const handleNextPage = () => {
+    if (pagination.hasNextPage) {
+      setCurrentPage(prev => prev + 1)
+    }
+  }
 
-    return () => unsubscribe()
-  }, [])
+  const handlePreviousPage = () => {
+    if (pagination.hasPreviousPage) {
+      setCurrentPage(prev => prev - 1)
+    }
+  }
 
-  const filteredLogs = logs.filter(log => {
-    if (logType === 'all') return true
-    return log.type === logType
-  })
+  // Handler for log type change
+  const handleLogTypeChange = (value: LogType) => {
+    setLogType(value)
+    setCurrentPage(1) // Reset to first page when changing filter
+  }
+
+  // Handler for viewing response
+  const handleViewResponse = (log: Log) => {
+    setSelectedLog(log)
+    // Only set the response if it exists
+    if (log.response) {
+      setSelectedResponse(log.response)
+    } else {
+      setSelectedResponse('No response data available')
+    }
+    setIsResponseOpen(true)
+  }
 
   return (
     <div className="min-h-screen bg-white p-8">
@@ -94,7 +133,7 @@ export default function LogsPage() {
               View all system activity and responses
             </p>
           </div>
-          <Select value={logType} onValueChange={(value: LogType) => setLogType(value)}>
+          <Select value={logType} onValueChange={handleLogTypeChange}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filter by type" />
             </SelectTrigger>
@@ -107,61 +146,129 @@ export default function LogsPage() {
           </Select>
         </div>
 
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Timestamp</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Details</TableHead>
-                <TableHead>Response</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredLogs.length === 0 ? (
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <LoadingSpinner />
+          </div>
+        ) : (
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-gray-500">
-                    {logs.length === 0 ? 'No logs found' : 'No logs match the selected filter'}
-                  </TableCell>
+                  <TableHead>Timestamp</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Details</TableHead>
+                  <TableHead>Response</TableHead>
                 </TableRow>
-              ) : (
-                filteredLogs.map((log) => (
-                  <TableRow key={log.id}>
-                    <TableCell>
-                      {new Date(log.timestamp).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="capitalize">{log.type}</TableCell>
-                    <TableCell>
-                      <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                        log.status === 'success' ? 'bg-green-50 text-green-700' : 
-                        log.status === 'pending' ? 'bg-yellow-50 text-yellow-700' :
-                        'bg-red-50 text-red-700'
-                      }`}>
-                        {log.status}
-                      </span>
-                    </TableCell>
-                    <TableCell className="max-w-md truncate">{log.details}</TableCell>
-                    <TableCell className="max-w-md truncate">
-                      {log.response && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedLog(log)
-                            setSelectedResponse(log.response)
-                            setIsResponseOpen(true)
-                          }}
-                        >
-                          View Response
-                        </Button>
-                      )}
+              </TableHeader>
+              <TableBody>
+                {logs.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                      No logs found
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  logs.map((log) => (
+                    <TableRow key={log.id}>
+                      <TableCell>
+                        {log.timestamp.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="capitalize">{log.type}</TableCell>
+                      <TableCell>
+                        <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                          log.status === 'success' ? 'bg-green-50 text-green-700' : 
+                          log.status === 'pending' ? 'bg-yellow-50 text-yellow-700' :
+                          'bg-red-50 text-red-700'
+                        }`}>
+                          {log.status}
+                        </span>
+                      </TableCell>
+                      <TableCell className="max-w-md truncate">{log.details}</TableCell>
+                      <TableCell className="max-w-md truncate">
+                        {log.response && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewResponse(log)}
+                          >
+                            View Response
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+
+        {/* Pagination controls */}
+        <div className="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 mt-4">
+          <div className="flex flex-1 justify-between sm:hidden">
+            <Button
+              onClick={handlePreviousPage}
+              disabled={!pagination.hasPreviousPage}
+              variant="outline"
+              size="sm"
+            >
+              Previous
+            </Button>
+            <Button
+              onClick={handleNextPage}
+              disabled={!pagination.hasNextPage}
+              variant="outline"
+              size="sm"
+            >
+              Next
+            </Button>
+          </div>
+          <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm text-gray-700">
+                Showing{' '}
+                <span className="font-medium">
+                  {pagination.totalLogs === 0 ? 0 : ((currentPage - 1) * 10) + 1}
+                </span>{' '}
+                to{' '}
+                <span className="font-medium">
+                  {Math.min(currentPage * 10, pagination.totalLogs)}
+                </span>{' '}
+                of{' '}
+                <span className="font-medium">{pagination.totalLogs}</span>{' '}
+                results
+              </p>
+            </div>
+            <div>
+              <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                <Button
+                  onClick={handlePreviousPage}
+                  disabled={!pagination.hasPreviousPage}
+                  variant="outline"
+                  size="sm"
+                  className="rounded-l-md"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  <span className="ml-2">Previous</span>
+                </Button>
+                <div className="px-4 py-2 text-sm font-semibold">
+                  Page {currentPage} of {pagination.totalPages}
+                </div>
+                <Button
+                  onClick={handleNextPage}
+                  disabled={!pagination.hasNextPage}
+                  variant="outline"
+                  size="sm"
+                  className="rounded-r-md"
+                >
+                  <span className="mr-2">Next</span>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </nav>
+            </div>
+          </div>
         </div>
       </div>
       <AlertDialog open={isResponseOpen} onOpenChange={setIsResponseOpen}>
@@ -172,7 +279,7 @@ export default function LogsPage() {
               {selectedLog && (
                 <div className="flex flex-col gap-1 mt-1">
                   <div className="text-sm text-gray-500">
-                    {new Date(selectedLog.timestamp).toLocaleString()}
+                    {selectedLog.timestamp.toLocaleString()}
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium capitalize">{selectedLog.type}</span>
