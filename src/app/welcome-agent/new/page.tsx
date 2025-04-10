@@ -998,7 +998,7 @@ export default function WelcomeAgentNew() {
       {isConfigureDrawerOpen && (
         <>
           <div className="fixed inset-0 bg-black/20" onClick={() => setIsConfigureDrawerOpen(false)} />
-          <div className="fixed right-0 top-0 h-full w-[400px] bg-white shadow-lg z-50 flex flex-col">
+          <div className="fixed right-0 top-0 h-full w-[450px] bg-white shadow-lg z-50 flex flex-col">
             <div className="flex items-center justify-between p-6 border-b">
               <h2 className="text-lg font-semibold">Configure Agent</h2>
               <Button variant="ghost" size="icon" onClick={() => setIsConfigureDrawerOpen(false)}>
@@ -1032,7 +1032,7 @@ export default function WelcomeAgentNew() {
                               selectedEmailAccount === account.email && "bg-gray-50 border-gray-300"
                             )}
                           >
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
                               <input
                                 type="radio"
                                 id={account.id}
@@ -1044,11 +1044,11 @@ export default function WelcomeAgentNew() {
                                 }}
                                 className="h-4 w-4 text-primary border-gray-300"
                               />
-                              <div className="flex flex-col">
-                                <label htmlFor={account.id} className="text-sm font-medium">
+                              <div className="flex flex-col flex-1 min-w-0 ">
+                                <label htmlFor={account.id} className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis">
                                   {account.name}
                                 </label>
-                                <span className="text-xs text-gray-500">
+                                <span className="text-xs text-gray-500 whitespace-nowrap overflow-hidden text-ellipsis">
                                   {account.email}
                                 </span>
                               </div>
