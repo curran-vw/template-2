@@ -39,7 +39,7 @@ import { useEmailGenerator } from '@/app/lib/hooks/useEmailGenerator'
 import { EmailGenerationDialog } from '@/app/components/agent-specific/welcome-agent/email-generation-dialog'
 import { ConnectGmail } from "@/components/common/agent-specific/welcome-agent/connect-gmail"
 import { useAuth } from '@/lib/hooks/useAuth'
-import { gmailUtils } from '@/app/lib/firebase/gmailUtils'
+import { GmailTokens, gmailUtils } from '@/app/lib/firebase/gmailUtils'
 import { mailgunUtils } from '@/app/lib/firebase/mailgunUtils'
 import { OnboardingTooltip } from "@/app/components/agent-specific/welcome-agent/onboarding-tooltip"
 
@@ -496,6 +496,8 @@ export default function WelcomeAgentNew() {
       }
     }
 
+    console.log("Selected email account:", selectedEmailAccount)
+
     try {
       // Create the initial data object
       const agentData = {
@@ -530,7 +532,7 @@ export default function WelcomeAgentNew() {
         } : {}),
         lastModified: Date.now()
       }
-
+      
       // Remove any undefined or null values recursively
       const cleanData = (obj: any): any => {
         return Object.fromEntries(
@@ -595,7 +597,7 @@ export default function WelcomeAgentNew() {
     handleSave('draft')
   }
 
-  const handleGmailConnected = async (email: string, name: string, tokens: any) => {
+  const handleGmailConnected = async (email: string, name: string, tokens: GmailTokens) => {
     console.log('Gmail connected callback received:', { email, name })
     
     // Wait for auth to be ready
@@ -637,10 +639,7 @@ export default function WelcomeAgentNew() {
         user.uid,
         email,
         name,
-        {
-          ...tokens,
-          expiry_date: Date.now() + (tokens.expires_in * 1000)
-        }
+        tokens
       )
 
       console.log('Gmail connection saved:', connectionId)
@@ -1165,11 +1164,6 @@ export default function WelcomeAgentNew() {
                   </div>
                 </div>
               </CollapsibleCard>
-            </div>
-            <div className="p-6 bg-gray-50 border-t">
-              <Button className="w-full" onClick={() => setIsConfigureDrawerOpen(false)}>
-                Save Changes
-              </Button>
             </div>
           </div>
         </>

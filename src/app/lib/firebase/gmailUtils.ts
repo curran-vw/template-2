@@ -11,10 +11,10 @@ import {
 } from "firebase/firestore";
 import { encode } from "js-base64";
 
-interface GmailTokens {
+export interface GmailTokens {
   access_token: string;
   refresh_token: string;
-  expiry_date: number;
+  expires_in: number;
   token_type: string;
 }
 
@@ -87,7 +87,7 @@ export const gmailUtils = {
       }
 
       // Check if tokens are expired
-      if (tokens.expiry_date && Date.now() >= tokens.expiry_date) {
+      if (tokens.expires_in && Date.now() >= tokens.expires_in) {
         console.warn("Tokens are already expired, but proceeding with save");
       }
 
@@ -181,7 +181,7 @@ export const gmailUtils = {
     }
 
     const data = connection.data() as GmailConnection;
-    const expiryDate = data.tokens.expiry_date;
+    const expiryDate = data.tokens.expires_in;
 
     // If token expires in less than 5 minutes, refresh it
     if (Date.now() + 5 * 60 * 1000 >= expiryDate) {
@@ -265,7 +265,7 @@ export const gmailUtils = {
             tokens: {
               ...data.tokens,
               access_token: newTokens.access_token,
-              expiry_date: Date.now() + newTokens.expires_in * 1000,
+              expires_in: Date.now() + newTokens.expires_in * 1000,
             },
             isActive: true, // Ensure connection is marked as active
           },
@@ -328,8 +328,8 @@ export const gmailUtils = {
 
         // Check if the token is still valid
         if (
-          connection.tokens.expiry_date &&
-          Date.now() < connection.tokens.expiry_date
+          connection.tokens.expires_in &&
+          Date.now() < connection.tokens.expires_in
         ) {
           console.log("Token is still valid, reactivating connection...");
 
@@ -433,8 +433,8 @@ export const gmailUtils = {
 
         // Check if the token is still valid
         if (
-          connection.tokens.expiry_date &&
-          Date.now() < connection.tokens.expiry_date
+          connection.tokens.expires_in &&
+          Date.now() < connection.tokens.expires_in
         ) {
           console.log("Token is still valid, reactivating connection...");
 
@@ -599,8 +599,8 @@ export const gmailUtils = {
 
           // Check if the token is still valid
           if (
-            connection.tokens.expiry_date &&
-            Date.now() < connection.tokens.expiry_date
+            connection.tokens.expires_in &&
+            Date.now() < connection.tokens.expires_in
           ) {
             console.log("Token is still valid, reactivating connection...");
 
