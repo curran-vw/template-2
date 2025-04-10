@@ -107,6 +107,12 @@ export const emailHistoryUtils = {
         }
 
         try {
+          // First verify the Gmail connection is still valid
+          const connection = await gmailUtils.getConnection(emailData.gmailConnectionId);
+          if (!connection) {
+            throw new Error('Gmail connection no longer exists');
+          }
+          
           await gmailUtils.sendEmail({
             connectionId: emailData.gmailConnectionId,
             to: emailData.recipientEmail,
@@ -122,7 +128,7 @@ export const emailHistoryUtils = {
           })
         } catch (sendError) {
           console.error('Error sending email:', sendError)
-          // If sending fails, mark as failed
+          // If sending fails, mark as failed with detailed error message
           await updateDoc(docRef, {
             status: 'failed',
             error: sendError instanceof Error ? sendError.message : 'Failed to send email',

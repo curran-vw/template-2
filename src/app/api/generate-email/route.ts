@@ -46,7 +46,7 @@ export async function POST(req: Request) {
             'X-Title': 'Agentfolio'
           },
           body: JSON.stringify({
-            model: 'perplexity/llama-3.1-sonar-huge-128k-online',
+            model: 'perplexity/sonar',
             messages: [{
               role: 'user',
               content: `Do a search for this user. Here's the sign up email we got with their info: ${signupInfo}. 
@@ -59,7 +59,20 @@ export async function POST(req: Request) {
           })
         })
 
-        if (!userInfoResponse.ok) throw new Error('Failed to get user info')
+        if (!userInfoResponse.ok) {
+          const errorText = await userInfoResponse.text();
+          console.error('OpenRouter API Error:', {
+            status: userInfoResponse.status,
+            statusText: userInfoResponse.statusText,
+            response: errorText,
+            apiKey: process.env.OPENROUTER_API_KEY ? 'API key exists' : 'API key is missing',
+            input: {
+              signupInfo: signupInfo ? 'exists' : 'missing',
+              businessContextPurpose: businessContext?.purpose ? 'exists' : 'missing'
+            }
+          });
+          throw new Error(`Failed to get user info: ${userInfoResponse.status} ${userInfoResponse.statusText}`);
+        }
         const data = await userInfoResponse.json()
         const info = data.choices[0].message.content
 
@@ -94,7 +107,7 @@ export async function POST(req: Request) {
             'X-Title': 'Agentfolio'
           },
           body: JSON.stringify({
-            model: 'perplexity/llama-3.1-sonar-huge-128k-online',
+            model: 'perplexity/sonar',
             messages: [{
               role: 'user',
               content: `Do a search for the business associated with this signup: ${signupInfo}... 
@@ -105,7 +118,16 @@ export async function POST(req: Request) {
           })
         })
 
-        if (!businessInfoResponse.ok) throw new Error('Failed to get business info')
+        if (!businessInfoResponse.ok) {
+          const errorText = await businessInfoResponse.text();
+          console.error('OpenRouter API Error (Business Info):', {
+            status: businessInfoResponse.status,
+            statusText: businessInfoResponse.statusText,
+            response: errorText,
+            apiKey: process.env.OPENROUTER_API_KEY ? 'API key exists' : 'API key is missing'
+          });
+          throw new Error(`Failed to get business info: ${businessInfoResponse.status} ${businessInfoResponse.statusText}`);
+        }
         const data = await businessInfoResponse.json()
         const info = data.choices[0].message.content
 
@@ -143,7 +165,7 @@ export async function POST(req: Request) {
             'X-Title': 'Agentfolio'
           },
           body: JSON.stringify({
-            model: 'anthropic/claude-3.5-sonnet',
+            model: 'anthropic/claude-3.7-sonnet',
             messages: [{
               role: 'user',
               content: `We are writing the body of a personalized email today to a new lead that just signed up 
@@ -201,7 +223,7 @@ export async function POST(req: Request) {
             'X-Title': 'Agentfolio'
           },
           body: JSON.stringify({
-            model: 'anthropic/claude-3.5-sonnet',
+            model: 'anthropic/claude-3.7-sonnet',
             messages: [{
               role: 'user',
               content: `Write a short, email subject line for a personalized email to a new lead.
@@ -247,17 +269,26 @@ export async function POST(req: Request) {
     })
 
   } catch (error) {
-    console.error('Email generation error:', error)
+    console.error('Email generation error:', error instanceof Error ? {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    } : error);
+    
     await logsUtils.addLog({
       type: 'api',
       status: 'failed',
       details: 'Email generation failed',
-      response: error instanceof Error ? error.message : 'Unknown error',
+      response: error instanceof Error ? `${error.name}: ${error.message}` : 'Unknown error',
       workspaceId: workspaceId || '',
       agentId: agentId || ''
     })
+    
     return NextResponse.json(
-      { error: 'Failed to generate email' },
+      { 
+        error: 'Failed to generate email',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
   }

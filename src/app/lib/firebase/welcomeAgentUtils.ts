@@ -106,13 +106,13 @@ export const welcomeAgentUtils = {
         fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY || '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'}`,
+            'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
             'Content-Type': 'application/json',
             'HTTP-Referer': 'https://agentfolio.ai',
             'X-Title': 'Agentfolio'
           },
           body: JSON.stringify({
-            model: 'perplexity/llama-3.1-sonar-huge-128k-online',
+            model: 'perplexity/sonar',
             messages: [{
               role: 'user',
               content: `Do a search for this user. Here's the sign up email we got with their info: ${signupInfo.rawContent}. 
@@ -133,13 +133,13 @@ export const welcomeAgentUtils = {
         fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY || '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'}`,
+            'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
             'Content-Type': 'application/json',
             'HTTP-Referer': 'https://agentfolio.ai',
             'X-Title': 'Agentfolio'
           },
           body: JSON.stringify({
-            model: 'perplexity/llama-3.1-sonar-huge-128k-online',
+            model: 'perplexity/sonar',
             messages: [{
               role: 'user',
               content: `Do a search for the business associated with this signup: ${signupInfo.rawContent}... 
@@ -164,13 +164,13 @@ export const welcomeAgentUtils = {
       const emailBodyResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY || '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'}`,
+          'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
           'Content-Type': 'application/json',
           'HTTP-Referer': 'https://agentfolio.ai',
           'X-Title': 'Agentfolio'
         },
         body: JSON.stringify({
-          model: 'anthropic/claude-3.5-sonnet',
+          model: 'anthropic/claude-3.7-sonnet',
           messages: [{
             role: 'user',
             content: `We are writing the HTML body using <p> and <br> tags of a personalized email today to a new lead that just signed up 
@@ -179,11 +179,11 @@ export const welcomeAgentUtils = {
               Make it read like a human sent it after looking up their company and make it clear we know what they do without jargon.  
               Make it pretty casual and welcoming with an 8th grade reading level. 
               If business info is unclear, keep it generic to the industry; if user info is clear, make it more specific.
-              Don't use placeholders like [calendar link] or make note that it's a template.
+              Don't use placeholders like [calendar link] and don't make note that it's a template.
               Address the person by first name if available (but just make it general if no name is provided). 
               Sign off with this exact name: ${senderName}
 
-            Here's what you should do in this email: ${agent.emailPurpose?.directive || ''}  
+            Please use the following directive for your email. If it specifies a different length, please adjust accordingly: ${agent.emailPurpose?.directive || ''}  
 
             Here's the context on this person: ${userInfoResponse}  
             Here's the context on this person's business: ${businessInfoResponse}   
@@ -203,22 +203,18 @@ export const welcomeAgentUtils = {
       const subjectResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY || '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'}`,
+          'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
           'Content-Type': 'application/json',
           'HTTP-Referer': 'https://agentfolio.ai',
           'X-Title': 'Agentfolio'
         },
         body: JSON.stringify({
-          model: 'anthropic/claude-3.5-sonnet',
+          model: 'anthropic/claude-3.7-sonnet',
           messages: [{
             role: 'user',
-            content: `Write an email subject line for this email below. 
-            Do not use any placeholders. 
-            Only return one short email subject line and make it look like it's a personal email 
-            to them from someone they know and they want to click it. 
-            (do not mention that it's a subject line or return anything other than the subject line).
-
-            Here's the email: ${emailBodyResponse}`
+            content: `Write a short, email subject line for a personalized email to a new lead.
+              Make it personal and seem like it is just a casual email from someone they know. Do not use placeholders or emojis. Do not put "Subject: " before the subject line. Just write the subject line and that's it.
+              Context about them: ${userInfoResponse}`
           }]
         })
       }).then(async res => {
@@ -296,6 +292,8 @@ export const welcomeAgentUtils = {
           subject: failedEmailDetails.subject,
           body: failedEmailDetails.body,
           status: 'failed',
+          userInfo: 'No user information available.',
+          businessInfo: 'No business information available.',
           error: error instanceof Error ? error.message : 'Unknown error occurred'
         })
       } catch (recordError) {
