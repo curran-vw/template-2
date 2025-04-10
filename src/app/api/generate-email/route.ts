@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     directive = body.directive
     businessContext = body.businessContext
     workspaceId = body.workspaceId
-    agentId = body.agentId
+    agentId = body.agentId ?? null
 
     // Log the start of the process
     await logsUtils.addLog({

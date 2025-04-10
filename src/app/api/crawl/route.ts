@@ -11,24 +11,16 @@ export async function POST(req: Request) {
     const body = await req.json()
     url = body.url
     workspaceId = body.workspaceId
-    agentId = body.agentId
+    agentId = body.agentId ?? null
 
     // Log the start of crawling
     console.log(`Starting crawl of URL: ${url}`)
-    
-    // Create initial log entry
-    const logId = await logsUtils.addLog({
-      type: 'crawl',
-      status: 'pending',
-      details: `Starting crawl of ${url}`,
-      workspaceId,
-      agentId
-    })
 
     // Validate URL
     try {
       new URL(url)
     } catch (e) {
+      console.error('Invalid URL:', e)
       await logsUtils.addLog({
         type: 'crawl',
         status: 'failed',
@@ -38,6 +30,15 @@ export async function POST(req: Request) {
       })
       return NextResponse.json({ error: 'Invalid URL' }, { status: 400 })
     }
+    
+    // Create initial log entry
+    await logsUtils.addLog({
+      type: 'crawl',
+      status: 'pending',
+      details: `Starting crawl of ${url}`,
+      workspaceId,
+      agentId
+    })
 
     // Fetch the webpage
     console.log('Fetching webpage...')
@@ -117,7 +118,7 @@ export async function POST(req: Request) {
     const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY || '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'}`,
+        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
         'Content-Type': 'application/json',
         'HTTP-Referer': 'https://agentfolio.ai',
         'X-Title': 'Agentfolio'
@@ -147,6 +148,7 @@ export async function POST(req: Request) {
         workspaceId,
         agentId
       })
+      console.error('OpenRouter API error:', errorText)
       return NextResponse.json(
         { error: 'Failed to summarize content' },
         { status: 500 }

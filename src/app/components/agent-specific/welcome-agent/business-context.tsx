@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Input } from '@/app/components/common/input'
 import { Textarea } from '@/app/components/common/textarea'
 import { Button } from '@/app/components/common/button'
-import { Loader2, Check, X, ChevronRight } from 'lucide-react'
+import { Loader2, Check, X, ChevronRight, RefreshCw } from 'lucide-react'
 import { useCrawler } from '@/app/lib/hooks/useCrawler'
 import { Checkbox } from "@/app/components/common/checkbox"
 import { Label } from "@/app/components/common/label"
@@ -110,8 +110,8 @@ export function BusinessContext({
               </>
             ) : crawlStatus === 'failed' ? (
               <>
-                <X className="mr-1 h-3 w-3" />
-                Failed
+                <RefreshCw className="mr-1 h-3 w-3" />
+                Failed, try again
               </>
             ) : (
               'Crawl Page'
