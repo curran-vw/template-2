@@ -124,26 +124,26 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   }, [loadWorkspaces])
 
   // Set up a regular refresh interval for workspaces
-  useEffect(() => {
-    const checkForWorkspaces = async () => {
-      const user = auth.currentUser
-      if (user) {
-        // If it's been more than 2 seconds since we last loaded workspaces, or we haven't loaded them yet
-        const now = Date.now()
-        if (!hasLoadedWorkspaces || now - lastLoadTime > 2000) {
-          console.log('Refreshing workspaces on interval check')
-          await loadWorkspaces(user.uid)
-        }
-      }
-    }
+  // useEffect(() => {
+  //   const checkForWorkspaces = async () => {
+  //     const user = auth.currentUser
+  //     if (user) {
+  //       // If it's been more than 2 seconds since we last loaded workspaces, or we haven't loaded them yet
+  //       const now = Date.now()
+  //       if (!hasLoadedWorkspaces || now - lastLoadTime > 2000) {
+  //         console.log('Refreshing workspaces on interval check')
+  //         await loadWorkspaces(user.uid)
+  //       }
+  //     }
+  //   }
 
-    // Check immediately and then every 3 seconds for new workspaces
-    // This helps ensure we pick up any workspaces created in AuthContext
-    const interval = setInterval(checkForWorkspaces, 3000)
-    checkForWorkspaces()
+  //   // Check immediately and then every 3 seconds for new workspaces
+  //   // This helps ensure we pick up any workspaces created in AuthContext
+  //   const interval = setInterval(checkForWorkspaces, 3000)
+  //   checkForWorkspaces()
 
-    return () => clearInterval(interval)
-  }, [hasLoadedWorkspaces, lastLoadTime, loadWorkspaces])
+  //   return () => clearInterval(interval)
+  // }, [hasLoadedWorkspaces, lastLoadTime, loadWorkspaces])
 
   useEffect(() => {
     console.log('WorkspaceProvider: Setting up auth listener')
