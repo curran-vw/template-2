@@ -26,9 +26,9 @@ export async function GET() {
   console.log('Initiating OAuth flow with host:', host)
   console.log('Using redirect URI:', redirectUri)
 
-  const clientId = process.env.GOOGLE_CLIENT_ID
+  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
   if (!clientId) {
-    throw new Error('GOOGLE_CLIENT_ID is not configured')
+    throw new Error('NEXT_PUBLIC_GOOGLE_CLIENT_ID is not configured')
   }
 
   // Configure OAuth 2.0 parameters

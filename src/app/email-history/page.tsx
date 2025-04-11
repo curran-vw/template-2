@@ -17,7 +17,6 @@ import { useToast } from '@/app/components/common/use-toast'
 import { emailHistoryUtils } from '@/app/lib/firebase/emailHistoryUtils'
 import { LoadingSpinner } from '@/app/components/common/loading-spinner'
 import { Badge } from '@/app/components/common/badge'
-import { cn } from '@/app/lib/utils'
 import React from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/common/tabs"
 import { User, Building } from 'lucide-react'
@@ -84,6 +83,7 @@ export default function EmailHistory() {
       )
       setEmails(result.emails)
       setPagination(result.pagination)
+      console.log('Loaded emails:', result.emails)
     } catch (error) {
       toast({
         title: 'Error',

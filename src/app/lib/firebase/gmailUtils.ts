@@ -184,7 +184,7 @@ export const gmailUtils = {
     const expiryDate = data.tokens.expires_in;
 
     // If token expires in less than 5 minutes, refresh it
-    if (Date.now() + 5 * 60 * 1000 >= expiryDate) {
+    if (expiryDate < 5 * 60) {
       console.log("Token needs refresh, refreshing...");
       try {
         // Log client ID (without the full secret) for debugging
@@ -278,7 +278,7 @@ export const gmailUtils = {
         console.error("Error refreshing token:", error);
 
         // Try to use the existing token if it's not expired
-        if (Date.now() < expiryDate) {
+        if (expiryDate > 0) {
           console.log("Using existing token despite refresh error");
           return data.tokens.access_token;
         }
@@ -328,8 +328,7 @@ export const gmailUtils = {
 
         // Check if the token is still valid
         if (
-          connection.tokens.expires_in &&
-          Date.now() < connection.tokens.expires_in
+          connection.tokens.expires_in > 0 
         ) {
           console.log("Token is still valid, reactivating connection...");
 
@@ -390,6 +389,12 @@ export const gmailUtils = {
         .replace(/\//g, "_")
         .replace(/=+$/, "");
 
+      console.log("Encoded email content:", encodedEmail);
+      console.log("Sending email to:", to);
+      console.log("Email subject:", subject);
+      console.log("Email body:", body);
+      console.log("Access token:", accessToken);
+      console.log("Connection ID:", connectionId);
       // Send the email via Gmail API
       const response = await fetch(
         "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
@@ -432,9 +437,10 @@ export const gmailUtils = {
         console.log("Connection is inactive, attempting to reactivate...");
 
         // Check if the token is still valid
+        console.log("Checking token validity...");
+        console.log("Token expiry date:", connection.tokens.expires_in);
         if (
-          connection.tokens.expires_in &&
-          Date.now() < connection.tokens.expires_in
+          connection.tokens.expires_in > 0 
         ) {
           console.log("Token is still valid, reactivating connection...");
 
@@ -599,8 +605,7 @@ export const gmailUtils = {
 
           // Check if the token is still valid
           if (
-            connection.tokens.expires_in &&
-            Date.now() < connection.tokens.expires_in
+            connection.tokens.expires_in > 0 
           ) {
             console.log("Token is still valid, reactivating connection...");
 
