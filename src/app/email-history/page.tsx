@@ -102,8 +102,17 @@ export default function EmailHistory() {
   }, [workspace?.id, loadEmails, currentPage])
 
   const handleApprove = async (emailId: string) => {
+    if(!workspace?.id) {
+      toast({
+        title: 'Error',
+        description: 'Workspace ID is required',
+        variant: 'destructive',
+      })
+      return
+    }
+    
     try {
-      await emailHistoryUtils.updateEmailStatus(emailId, 'sent')
+      await emailHistoryUtils.updateEmailStatus(emailId, 'sent', workspace.id)
       toast({
         title: 'Success',
         description: 'Email approved and sent successfully',
@@ -119,8 +128,17 @@ export default function EmailHistory() {
   }
 
   const handleDeny = async (emailId: string) => {
+    if(!workspace?.id) {
+      toast({
+        title: 'Error',
+        description: 'Workspace ID is required',
+        variant: 'destructive',
+      })
+      return
+    }
+
     try {
-      await emailHistoryUtils.updateEmailStatus(emailId, 'denied')
+      await emailHistoryUtils.updateEmailStatus(emailId, 'denied', workspace.id)
       toast({
         title: 'Success',
         description: 'Email denied successfully',

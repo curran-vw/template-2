@@ -15,8 +15,9 @@ export async function POST(request: Request) {
     const subject = formData.get('subject') as string
     const bodyPlain = formData.get('body-plain') as string
     const strippedText = formData.get('stripped-text') as string
+    const workspaceId = formData.get('workspaceId') as string;
 
-    console.log('Email content:', { recipient, sender, subject, bodyPlain })
+    console.log('Email content:', { recipient, sender, subject, bodyPlain, workspaceId })
 
     // Find the Welcome Agent
     const localPart = recipient.split('@')[0]
@@ -89,6 +90,7 @@ export async function POST(request: Request) {
       }
 
       await gmailUtils.sendEmail({
+        workspaceId,
         connectionId: connection.id!,
         to: recipientEmail,
         subject: emailContent.subject,

@@ -70,11 +70,7 @@ export const emailHistoryUtils = {
       })) as EmailRecord[]
 
       return {
-        emails: paginatedDocs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: (doc.data().createdAt as Timestamp).toDate()
-        })) as EmailRecord[],
+        emails,
         pagination: {
           currentPage: page,
           totalPages: Math.ceil(totalEmails / pageSize),
@@ -89,7 +85,7 @@ export const emailHistoryUtils = {
     }
   },
 
-  async updateEmailStatus(emailId: string, status: 'sent' | 'denied') {
+  async updateEmailStatus(emailId: string, status: 'sent' | 'denied', workspaceId: string) {
     try {
       const docRef = doc(db, 'emailHistory', emailId)
       const emailDoc = await getDoc(docRef)
@@ -114,6 +110,7 @@ export const emailHistoryUtils = {
           }
           
           await gmailUtils.sendEmail({
+            workspaceId,
             connectionId: emailData.gmailConnectionId,
             to: emailData.recipientEmail,
             subject: emailData.subject,
