@@ -40,9 +40,9 @@ export const mailgunUtils = {
     return notificationEmail
   },
 
-  async getNotificationEmail(agentId: string): Promise<NotificationEmail | null> {
+  async getNotificationEmail(agentId: string, workspaceId: string): Promise<NotificationEmail | null> {
     const emailsRef = collection(db, 'notification_emails')
-    const q = query(emailsRef, where('agentId', '==', agentId), where('isActive', '==', true))
+    const q = query(emailsRef, where('agentId', '==', agentId), where('workspaceId', '==', workspaceId), where('isActive', '==', true))
     const snapshot = await getDocs(q)
     
     if (snapshot.empty) return null

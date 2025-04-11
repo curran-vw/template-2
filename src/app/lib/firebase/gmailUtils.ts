@@ -34,6 +34,7 @@ interface SendEmailParams {
   to: string;
   subject: string;
   body: string;
+  workspaceId: string;
 }
 
 export const gmailUtils = {
@@ -306,16 +307,14 @@ export const gmailUtils = {
     return data.tokens.access_token;
   },
 
-  async sendEmail({ connectionId, to, subject, body }: SendEmailParams) {
+  async sendEmail({ workspaceId, connectionId, to, subject, body }: SendEmailParams) {
     try {
-      console.log("Attempting to send email:", { connectionId, to, subject });
+      console.log("Attempting to send email:", { workspaceId, connectionId, to, subject });
 
       // Get the connection details
       const connection = await this.getConnectionById(connectionId);
       if (!connection) {
-        const connections = await this.getWorkspaceConnections(
-          "uIRfO3U9XyCw2eIbeeFb",
-        );
+        const connections = await this.getWorkspaceConnections(workspaceId);
         const availableEmails = connections.map((c) => c.email).join(", ");
         throw new Error(
           `No Gmail connection found for ID: ${connectionId}. Available connections: ${availableEmails}`,
@@ -425,7 +424,7 @@ export const gmailUtils = {
     }
   },
 
-  async testEmailConnection(connectionId: string) {
+  async testEmailConnection({connectionId, workspaceId}: {connectionId: string; workspaceId: string}) {
     try {
       const connection = await this.getConnection(connectionId);
       if (!connection) {
@@ -475,6 +474,7 @@ export const gmailUtils = {
       // Send a test email
       await this.sendEmail({
         connectionId,
+        workspaceId,
         to: connection.email,
         subject: "Welcome Agent - Test Connection",
         body: `

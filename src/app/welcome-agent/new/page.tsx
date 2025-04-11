@@ -692,9 +692,19 @@ export default function WelcomeAgentNew() {
   }, [isReady, user])
 
   const handleTestEmail = async (connectionId: string) => {
+    if(!workspace?.id) {
+      console.error('No workspace ID found:', workspace)
+      toast({
+        title: "Error",
+        description: "No workspace selected",
+        variant: "destructive"
+      })
+      return
+    }
+    
     setIsTestingEmail(connectionId)
     try {
-      await gmailUtils.testEmailConnection(connectionId)
+      await gmailUtils.testEmailConnection({connectionId, workspaceId: workspace.id})
       toast({
         title: "Success",
         description: "Test email sent successfully",
@@ -718,7 +728,7 @@ export default function WelcomeAgentNew() {
       
       try {
         // Try to get existing notification email
-        let email = await mailgunUtils.getNotificationEmail(editId)
+        let email = await mailgunUtils.getNotificationEmail(editId, workspace.id)
         
         // If none exists, generate new one
         if (!email) {
