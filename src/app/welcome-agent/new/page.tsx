@@ -19,9 +19,6 @@ import {
   DialogTitle,
 } from "@/app/components/common/dialog"
 import { Checkbox } from "@/app/components/common/checkbox"
-import { RadioGroup, RadioGroupItem } from "@/app/components/common/radio-group"
-import { Badge } from "@/app/components/common/badge"
-import { Separator } from "@/app/components/common/separator"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,7 +27,7 @@ import {
 } from "@/app/components/common/dropdown-menu"
 import { useWorkspace } from '@/app/lib/hooks/useWorkspace'
 import { welcomeAgentUtils } from '@/app/lib/firebase/welcomeAgentUtils'
-import { useToast } from '@/app/components/common/use-toast'
+import { useToast } from "@/app/components/common/toast-context"
 import { ConfirmDialog } from '@/app/components/common/confirm-dialog'
 import { cn } from "@/lib/utils"
 import { Tooltip } from "@/app/components/common/tooltip"
@@ -242,7 +239,7 @@ export default function WelcomeAgentNew() {
     }
 
     loadAgent()
-  }, [editId, toast])
+  }, [editId])
 
   // Check for changes whenever relevant values change
   useEffect(() => {
@@ -293,7 +290,7 @@ export default function WelcomeAgentNew() {
     }
 
     loadConnectedAccounts()
-  }, [isReady, workspace?.id, selectedEmailAccount, toast])
+  }, [isReady, workspace?.id, selectedEmailAccount])
 
   const handleNavigateAway = (action: () => void) => {
     if (hasUnsavedChanges) {
@@ -415,15 +412,13 @@ export default function WelcomeAgentNew() {
     setGenerationStep(null)
   }
 
-  const handleGetEmail = () => {
-    setNotificationEmail('your-unique-id@welcomeagent.com')
-  }
-
   const handleCopyEmail = () => {
     if (notificationEmail) {
-      navigator.clipboard.writeText(notificationEmail)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+       navigator.clipboard.writeText(notificationEmail)
+      toast({
+        title: "Email Copied",
+        description: "The notification email has been copied to your clipboard.",
+       })
     }
   }
 
@@ -1116,14 +1111,8 @@ export default function WelcomeAgentNew() {
                           </div>
                           <Button
                             variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              navigator.clipboard.writeText(notificationEmail)
-                              toast({
-                                title: "Copied!",
-                                description: "Email address copied to clipboard",
-                              })
-                            }}
+                            size="icon"
+                            onClick={handleCopyEmail}
                           >
                             <Copy className="h-4 w-4" />
                           </Button>
