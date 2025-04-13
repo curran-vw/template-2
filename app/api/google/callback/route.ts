@@ -1,36 +1,36 @@
-import { NextResponse } from 'next/server'
-import { headers } from 'next/headers'
+import { NextResponse } from "next/server";
+import { headers } from "next/headers";
 
 export async function GET(request: Request) {
-  const headersList = headers()
-  const host = headersList.get('host')
-  
-  let redirectUri = ''
-  
+  const headersList = headers();
+  const host = headersList.get("host");
+
+  let redirectUri = "";
+
   // Get the production URL from environment
-  const productionUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.welcomeagent.ai'
-  
-  if (host?.includes('localhost')) {
-    redirectUri = 'http://localhost:3000/api/google/callback'
-  } else if (host?.includes('replit.app')) {
+  const productionUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.welcomeagent.ai";
+
+  if (host?.includes("localhost")) {
+    redirectUri = "http://localhost:3000/api/google/callback";
+  } else if (host?.includes("replit.app")) {
     // Published Replit app domain
-    redirectUri = `https://${host}/api/google/callback`
-  } else if (host?.includes('worf.replit.dev')) {
+    redirectUri = `https://${host}/api/google/callback`;
+  } else if (host?.includes("worf.replit.dev")) {
     // Staging Replit domain for development
-    redirectUri = `https://${host}/api/google/callback`
+    redirectUri = `https://${host}/api/google/callback`;
   } else {
     // Production domain
-    redirectUri = `${productionUrl}/api/google/callback`
+    redirectUri = `${productionUrl}/api/google/callback`;
   }
 
-  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET
+  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
   if (!clientId || !clientSecret) {
-    console.error('Missing OAuth credentials:', { 
-      hasClientId: !!clientId, 
-      hasClientSecret: !!clientSecret 
-    })
+    console.error("Missing OAuth credentials:", {
+      hasClientId: !!clientId,
+      hasClientSecret: !!clientSecret,
+    });
     return new NextResponse(
       `
       <html>
@@ -47,22 +47,19 @@ export async function GET(request: Request) {
       `,
       {
         headers: {
-          'Content-Type': 'text/html',
-          'Cross-Origin-Opener-Policy': 'unsafe-none'
+          "Content-Type": "text/html",
+          "Cross-Origin-Opener-Policy": "unsafe-none",
         },
-      }
-    )
+      },
+    );
   }
 
-  console.log('Callback received with host:', host)
-  console.log('Using redirect URI:', redirectUri)
-  
-  const searchParams = new URL(request.url).searchParams
-  const code = searchParams.get('code')
-  const error = searchParams.get('error')
+  const searchParams = new URL(request.url).searchParams;
+  const code = searchParams.get("code");
+  const error = searchParams.get("error");
 
   if (error) {
-    console.error('Google returned error:', error)
+    console.error("Google returned error:", error);
     return new NextResponse(
       `
       <html>
@@ -79,15 +76,15 @@ export async function GET(request: Request) {
       `,
       {
         headers: {
-          'Content-Type': 'text/html',
-          'Cross-Origin-Opener-Policy': 'unsafe-none'
+          "Content-Type": "text/html",
+          "Cross-Origin-Opener-Policy": "unsafe-none",
         },
-      }
-    )
+      },
+    );
   }
 
   if (!code) {
-    console.error('No code received in callback')
+    console.error("No code received in callback");
     return new NextResponse(
       `
       <html>
@@ -104,72 +101,58 @@ export async function GET(request: Request) {
       `,
       {
         headers: {
-          'Content-Type': 'text/html',
-          'Cross-Origin-Opener-Policy': 'unsafe-none'
+          "Content-Type": "text/html",
+          "Cross-Origin-Opener-Policy": "unsafe-none",
         },
-      }
-    )
+      },
+    );
   }
 
   try {
-    console.log('Exchanging code for tokens...')
     const tokenParams = {
       code,
       client_id: clientId,
       client_secret: clientSecret,
       redirect_uri: redirectUri,
-      grant_type: 'authorization_code',
-    }
-    console.log('Token request params:', {
-      ...tokenParams,
-      client_secret: '[REDACTED]'
-    })
+      grant_type: "authorization_code",
+    };
 
-    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
+    const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        "Content-Type": "application/x-www-form-urlencoded",
       },
       body: new URLSearchParams(tokenParams),
-    })
+    });
 
-    const responseText = await tokenResponse.text()
-    console.log('Token response status:', tokenResponse.status)
-    console.log('Token response headers:', Object.fromEntries(tokenResponse.headers))
-    
-    let tokens
+    const responseText = await tokenResponse.text();
+
+    let tokens;
     try {
-      tokens = JSON.parse(responseText)
-      console.log('Token response parsed:', {
-        ...tokens,
-        access_token: tokens.access_token ? '[PRESENT]' : '[MISSING]',
-        refresh_token: tokens.refresh_token ? '[PRESENT]' : '[MISSING]',
-      })
+      tokens = JSON.parse(responseText);
     } catch (e) {
-      console.log('Failed to parse token response as JSON:', responseText)
-      throw new Error('Failed to parse token response')
+      throw new Error("Failed to parse token response");
     }
 
     if (!tokenResponse.ok) {
-      throw new Error(`Token exchange failed: ${responseText}`)
+      throw new Error(`Token exchange failed: ${responseText}`);
     }
 
     // Get user info
-    console.log('Fetching user info...')
-    const userResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+
+    const userResponse = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
       headers: {
         Authorization: `Bearer ${tokens.access_token}`,
       },
-    })
+    });
 
     if (!userResponse.ok) {
-      const error = await userResponse.text()
-      console.error('User info error:', error)
-      throw new Error('Failed to get user info')
+      const error = await userResponse.text();
+      console.error("User info error:", error);
+      throw new Error("Failed to get user info");
     }
 
-    const userInfo = await userResponse.json()
-    console.log('Received user info:', { email: userInfo.email, name: userInfo.name })
+    const userInfo = await userResponse.json();
 
     // Return HTML that closes the popup and sends success message
     return new NextResponse(
@@ -182,13 +165,13 @@ export async function GET(request: Request) {
                 const data = {
                   type: 'GMAIL_CONNECTED',
                   email: '${userInfo.email}',
-                  name: '${userInfo.name || ''}',
+                  name: '${userInfo.name || ""}',
                   tokens: ${JSON.stringify(tokens)}
                 };
                 
                 if (window.opener) {
                   window.opener.postMessage(data, '*');
-                  console.log('Message sent to opener');
+                  
                 } else {
                   console.error('No opener found');
                 }
@@ -210,19 +193,19 @@ export async function GET(request: Request) {
       `,
       {
         headers: {
-          'Content-Type': 'text/html',
-          'Cross-Origin-Opener-Policy': 'unsafe-none',
-          'Cross-Origin-Embedder-Policy': 'unsafe-none'
+          "Content-Type": "text/html",
+          "Cross-Origin-Opener-Policy": "unsafe-none",
+          "Cross-Origin-Embedder-Policy": "unsafe-none",
         },
-      }
-    )
+      },
+    );
   } catch (error) {
-    console.error('OAuth error details:', {
+    console.error("OAuth error details:", {
       error,
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
-    })
-    
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+
     return new NextResponse(
       `
       <html>
@@ -234,7 +217,9 @@ export async function GET(request: Request) {
                   { 
                     type: 'GMAIL_ERROR', 
                     error: 'Failed to connect Gmail account',
-                    details: ${JSON.stringify(error instanceof Error ? error.message : 'Unknown error')}
+                    details: ${JSON.stringify(
+                      error instanceof Error ? error.message : "Unknown error",
+                    )}
                   }, 
                   '*'
                 );
@@ -250,11 +235,11 @@ export async function GET(request: Request) {
       `,
       {
         headers: {
-          'Content-Type': 'text/html',
-          'Cross-Origin-Opener-Policy': 'unsafe-none',
-          'Cross-Origin-Embedder-Policy': 'unsafe-none'
+          "Content-Type": "text/html",
+          "Cross-Origin-Opener-Policy": "unsafe-none",
+          "Cross-Origin-Embedder-Policy": "unsafe-none",
         },
-      }
-    )
+      },
+    );
   }
-} 
+}

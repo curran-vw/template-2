@@ -1,9 +1,7 @@
-'use client'
+"use client";
 
-import { useEffect, useState, useCallback } from 'react'
-import { useWorkspace } from '@/app/lib/hooks/useWorkspace'
-import { useSearchParams } from 'next/navigation'
-import { Button } from '@/app/components/common/button'
+import React, { useEffect, useState, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Check,
   X,
@@ -11,7 +9,18 @@ import {
   ChevronUp,
   ChevronLeft,
   ChevronRight,
-} from 'lucide-react'
+  User,
+  Building,
+  Mail,
+  AlertCircle,
+  RefreshCw,
+} from "lucide-react";
+import { toast } from "sonner";
+
+import { useWorkspace } from "@/hooks/useWorkspace";
+import { emailHistoryUtils } from "@/firebase/email-history-utils";
+
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -19,70 +28,62 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/app/components/common/table'
-import { emailHistoryUtils } from '@/app/lib/firebase/emailHistoryUtils'
-import { LoadingSpinner } from '@/app/components/common/loading-spinner'
-import { Badge } from '@/app/components/common/badge'
-import React from 'react'
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/app/components/common/tabs'
-import { User, Building } from 'lucide-react'
-import { toast } from 'sonner'
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface EmailRecord {
-  id: string
-  recipientEmail: string
-  status: 'sent' | 'under_review' | 'denied' | 'failed'
-  createdAt: Date
-  agentId: string
-  agentName: string
-  subject: string
-  body: string
-  workspaceId: string
-  error?: string
-  gmailConnectionId?: string
+  id: string;
+  recipientEmail: string;
+  status: "sent" | "under_review" | "denied" | "failed";
+  createdAt: Date;
+  agentId: string;
+  agentName: string;
+  subject: string;
+  body: string;
+  workspaceId: string;
+  error?: string;
+  gmailConnectionId?: string;
   // New fields for AI responses
-  userInfo?: string
-  businessInfo?: string
+  userInfo?: string;
+  businessInfo?: string;
 }
 
 const formatMarkdownContent = (content: string | undefined) => {
-  if (!content) return []
+  if (!content) return [];
 
   return content
-    .split('\n\n')
+    .split("\n\n")
     .filter((section) => section.trim())
     .map((section) => {
       // Keep bold markers for now - we'll handle them in the render
-      return section
-        .replace(/\[[\d\]]/g, '') // Remove reference numbers [1], [2], etc.
-        .trim()
-    })
-}
+      return section.replace(/\[[\d\]]/g, "").trim(); // Remove reference numbers [1], [2], etc.
+    });
+};
 
 export default function EmailHistory() {
-  const { workspace } = useWorkspace()
-  const [emails, setEmails] = useState<EmailRecord[]>([])
-  const [loading, setLoading] = useState(true)
-  const [expandedEmail, setExpandedEmail] = useState<string | null>(null)
-  const searchParams = useSearchParams()
-  const agentId = searchParams?.get('agentId') ?? null
-  const [currentPage, setCurrentPage] = useState(1)
+  const { workspace } = useWorkspace();
+  const [emails, setEmails] = useState<EmailRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [expandedEmail, setExpandedEmail] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const agentId = searchParams?.get("agentId") ?? null;
+  const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState<{
-    totalPages: number
-    totalEmails: number
-    hasNextPage: boolean
-    hasPreviousPage: boolean
+    totalPages: number;
+    totalEmails: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
   }>({
     totalPages: 1,
     totalEmails: 0,
     hasNextPage: false,
     hasPreviousPage: false,
-  })
+  });
 
   const loadEmails = useCallback(async () => {
     try {
@@ -91,121 +92,156 @@ export default function EmailHistory() {
         agentId,
         currentPage,
         10,
-      )
-      setEmails(result.emails)
-      setPagination(result.pagination)
-      console.log('Loaded emails:', result.emails)
+      );
+      setEmails(result.emails);
+      setPagination(result.pagination);
     } catch (error) {
-      toast.error('Error', {
-        description: 'Failed to load email history',
-      })
+      toast.error("Error", {
+        description: "Failed to load email history",
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
+      setRefreshing(false);
     }
-  }, [workspace?.id, agentId, currentPage])
+  }, [workspace?.id, agentId, currentPage]);
 
   useEffect(() => {
     if (workspace?.id) {
-      loadEmails()
+      loadEmails();
     }
-  }, [workspace?.id, loadEmails, currentPage])
+  }, [workspace?.id, loadEmails, currentPage]);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    loadEmails();
+  };
 
   const handleApprove = async (emailId: string) => {
     if (!workspace?.id) {
-      toast.error('Error', {
-        description: 'Workspace ID is required',
-      })
-      return
+      toast.error("Error", {
+        description: "Workspace ID is required",
+      });
+      return;
     }
 
     try {
-      await emailHistoryUtils.updateEmailStatus(emailId, 'sent', workspace.id)
-      toast.success('Success', {
-        description: 'Email approved and sent successfully',
-      })
-      loadEmails() // Refresh the list
+      await emailHistoryUtils.updateEmailStatus(emailId, "sent", workspace.id);
+      toast.success("Success", {
+        description: "Email approved and sent successfully",
+      });
+      loadEmails(); // Refresh the list
     } catch (error) {
-      toast.error('Error', {
-        description: 'Failed to approve email',
-      })
+      toast.error("Error", {
+        description: "Failed to approve email",
+      });
     }
-  }
+  };
 
   const handleDeny = async (emailId: string) => {
     if (!workspace?.id) {
-      toast.error('Error', {
-        description: 'Workspace ID is required',
-      })
-      return
+      toast.error("Error", {
+        description: "Workspace ID is required",
+      });
+      return;
     }
 
     try {
-      await emailHistoryUtils.updateEmailStatus(emailId, 'denied', workspace.id)
-      toast.success('Success', {
-        description: 'Email denied successfully',
-      })
-      loadEmails() // Refresh the list
+      await emailHistoryUtils.updateEmailStatus(emailId, "denied", workspace.id);
+      toast.success("Success", {
+        description: "Email denied successfully",
+      });
+      loadEmails(); // Refresh the list
     } catch (error) {
-      toast.error('Error', {
-        description: 'Failed to deny email',
-      })
+      toast.error("Error", {
+        description: "Failed to deny email",
+      });
     }
-  }
+  };
 
-  const getStatusBadge = (status: EmailRecord['status']) => {
+  const getStatusBadge = (status: EmailRecord["status"]) => {
     const variants = {
-      sent: 'success',
-      under_review: 'warning',
-      denied: 'destructive',
-      failed: 'destructive',
-    } as const
+      sent: "success",
+      under_review: "warning",
+      denied: "destructive",
+      failed: "destructive",
+    } as const;
 
     const labels = {
-      sent: 'Sent',
-      under_review: 'Pending',
-      denied: 'Denied',
-      failed: 'Failed',
-    }
+      sent: "Sent",
+      under_review: "Pending",
+      denied: "Denied",
+      failed: "Failed",
+    };
 
-    return <Badge variant={variants[status]}>{labels[status]}</Badge>
-  }
+    return <Badge variant={variants[status]}>{labels[status]}</Badge>;
+  };
 
   const formatContent = (content: any): string => {
-    if (typeof content === 'string') return content
-    if (typeof content === 'object') {
+    if (typeof content === "string") return content;
+    if (typeof content === "object") {
       try {
-        return JSON.stringify(content, null, 2)
+        return JSON.stringify(content, null, 2);
       } catch {
-        return String(content)
+        return String(content);
       }
     }
-    return String(content)
-  }
+    return String(content);
+  };
 
   // Add pagination handlers
   const handleNextPage = () => {
     if (pagination.hasNextPage) {
-      setCurrentPage((prev) => prev + 1)
+      setCurrentPage((prev) => prev + 1);
     }
-  }
+  };
 
   const handlePreviousPage = () => {
     if (pagination.hasPreviousPage) {
-      setCurrentPage((prev) => prev - 1)
+      setCurrentPage((prev) => prev - 1);
     }
-  }
+  };
 
   if (loading) {
-    return <LoadingSpinner />
+    return (
+      <div className='container mx-auto py-6 space-y-6'>
+        <div className='flex items-center justify-between'>
+          <Skeleton className='h-8 w-48' />
+          <Skeleton className='h-10 w-24' />
+        </div>
+        <Card>
+          <CardHeader className='pb-3'>
+            <Skeleton className='h-6 w-32' />
+          </CardHeader>
+          <CardContent>
+            <div className='space-y-4'>
+              <Skeleton className='h-10 w-full' />
+              <Skeleton className='h-10 w-full' />
+              <Skeleton className='h-10 w-full' />
+              <Skeleton className='h-10 w-full' />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold">Email History</h1>
+    <div className='container mx-auto space-y-6 py-6'>
+      <div className='flex items-center justify-between'>
+        <h1 className='text-2xl font-semibold'>Email History</h1>
+        <Button
+          onClick={handleRefresh}
+          variant='outline'
+          size='sm'
+          disabled={refreshing}
+          className='flex items-center gap-2'
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+          Refresh
+        </Button>
       </div>
 
-      <div className="rounded-md border">
+      <Card>
         <Table>
           <TableHeader>
             <TableRow>
@@ -213,370 +249,324 @@ export default function EmailHistory() {
               <TableHead>Agent</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Date & Time</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className='text-right'>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {emails.map((email) => (
               <React.Fragment key={email.id}>
-                <TableRow>
-                  <TableCell>{email.recipientEmail}</TableCell>
+                <TableRow className='group hover:bg-muted/50'>
+                  <TableCell className='font-medium'>{email.recipientEmail}</TableCell>
                   <TableCell>{email.agentName}</TableCell>
                   <TableCell>{getStatusBadge(email.status)}</TableCell>
                   <TableCell>
-                    {email.createdAt.toLocaleDateString()}{' '}
-                    {email.createdAt.toLocaleTimeString()}
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span>{email.createdAt.toLocaleDateString()}</span>
+                        </TooltipTrigger>
+                        <TooltipContent>{email.createdAt.toLocaleTimeString()}</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end items-center gap-2">
-                      {email.status === 'under_review' && (
+                  <TableCell className='text-right'>
+                    <div className='flex items-center justify-end gap-2 opacity-80 group-hover:opacity-100'>
+                      {email.status === "under_review" && (
                         <>
                           <Button
                             onClick={() => handleApprove(email.id)}
-                            variant="ghost"
-                            size="sm"
-                            className="hover:bg-green-50 hover:text-green-600"
+                            variant='ghost'
+                            size='sm'
+                            className='text-success hover:bg-success/10 hover:text-success'
                           >
-                            <Check className="h-4 w-4" />
-                            <span className="ml-2">Approve</span>
+                            <Check className='h-4 w-4' />
+                            <span className='ml-2'>Approve</span>
                           </Button>
                           <Button
                             onClick={() => handleDeny(email.id)}
-                            variant="ghost"
-                            size="sm"
-                            className="hover:bg-red-50 hover:text-red-600"
+                            variant='ghost'
+                            size='sm'
+                            className='text-destructive hover:bg-destructive/10 hover:text-destructive'
                           >
-                            <X className="h-4 w-4" />
-                            <span className="ml-2">Deny</span>
+                            <X className='h-4 w-4' />
+                            <span className='ml-2'>Deny</span>
                           </Button>
                         </>
                       )}
                       <Button
                         onClick={() =>
-                          setExpandedEmail(
-                            expandedEmail === email.id ? null : email.id,
-                          )
+                          setExpandedEmail(expandedEmail === email.id ? null : email.id)
                         }
-                        variant="ghost"
-                        size="sm"
-                        className="hover:bg-blue-50 hover:text-blue-600"
+                        variant='ghost'
+                        size='sm'
+                        className='text-primary hover:bg-primary/10 hover:text-primary'
                       >
                         {expandedEmail === email.id ? (
-                          <ChevronUp className="h-4 w-4" />
+                          <ChevronUp className='h-4 w-4' />
                         ) : (
-                          <ChevronDown className="h-4 w-4" />
+                          <ChevronDown className='h-4 w-4' />
                         )}
-                        <span className="ml-2">Preview</span>
+                        <span className='ml-2'>Preview</span>
                       </Button>
                     </div>
                   </TableCell>
                 </TableRow>
                 {expandedEmail === email.id && (
                   <TableRow>
-                    <TableCell colSpan={5} className="bg-gray-50">
-                      <div className="p-6">
-                        <div className="grid grid-cols-5 gap-6">
+                    <TableCell colSpan={5} className='bg-muted/30 p-0'>
+                      <div className='p-6'>
+                        <div className='grid grid-cols-5 gap-6'>
                           {/* Email Preview - Left Side (3 columns) */}
-                          <div className="col-span-3">
-                            <div className="bg-white rounded-lg border shadow-sm">
-                              <div className="p-4 border-b">
-                                <h3 className="font-medium">Email Preview</h3>
-                              </div>
-                              <div className="p-4 space-y-3">
-                                <div>
-                                  <span className="text-sm text-gray-500">
-                                    To:
-                                  </span>
-                                  <span className="text-sm ml-2">
-                                    {email.recipientEmail}
-                                  </span>
+                          <div className='col-span-3'>
+                            <Card>
+                              <CardHeader className='pb-3 border-b'>
+                                <CardTitle className='flex items-center gap-2 text-base'>
+                                  <Mail className='h-4 w-4' />
+                                  Email Preview
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className='pt-4'>
+                                <div className='space-y-4'>
+                                  <div className='flex items-center'>
+                                    <span className='text-sm font-medium text-muted-foreground w-20'>
+                                      To:
+                                    </span>
+                                    <span className='text-sm'>{email.recipientEmail}</span>
+                                  </div>
+                                  <div className='flex items-center'>
+                                    <span className='text-sm font-medium text-muted-foreground w-20'>
+                                      Subject:
+                                    </span>
+                                    <span className='text-sm font-medium'>
+                                      {formatContent(email.subject)}
+                                    </span>
+                                  </div>
+                                  <div className='border-t pt-4'>
+                                    <div
+                                      className='prose prose-sm max-w-none text-muted-foreground'
+                                      dangerouslySetInnerHTML={{
+                                        __html: formatContent(email.body)
+                                          .replace(/<[^>]*>/g, "")
+                                          .split("\n")
+                                          .filter((line) => line.trim())
+                                          .map((line) => {
+                                            if (
+                                              line.match(
+                                                /^(Hey|Hi|Dear|Hello|Best|Regards|Sincerely|Thanks|Thank you)/,
+                                              )
+                                            ) {
+                                              return `<div class="mb-4">${line}</div>`;
+                                            }
+                                            return `<div class="mb-4">${line}</div>`;
+                                          })
+                                          .join(""),
+                                      }}
+                                    />
+                                  </div>
                                 </div>
-                                <div>
-                                  <span className="text-sm text-gray-500">
-                                    Subject:
-                                  </span>
-                                  <span className="text-sm font-medium ml-2">
-                                    {formatContent(email.subject)}
-                                  </span>
-                                </div>
-                                <div className="pt-3 border-t">
-                                  <div
-                                    className="text-sm text-gray-600 leading-relaxed"
-                                    dangerouslySetInnerHTML={{
-                                      __html: formatContent(email.body)
-                                        .replace(/<[^>]*>/g, '')
-                                        .split('\n')
-                                        .filter((line) => line.trim())
-                                        .map((line) => {
-                                          if (
-                                            line.match(
-                                              /^(Hey|Hi|Dear|Hello|Best|Regards|Sincerely|Thanks|Thank you)/,
-                                            )
-                                          ) {
-                                            return `<div class="mb-4">${line}</div>`
-                                          }
-                                          return `<div class="mb-4">${line}</div>`
-                                        })
-                                        .join(''),
-                                    }}
-                                  />
-                                </div>
-                              </div>
-                            </div>
+                              </CardContent>
+                            </Card>
                           </div>
 
                           {/* Details Tabs - Right Side (2 columns) */}
-                          <div className="col-span-2">
-                            <div className="bg-white rounded-lg border shadow-sm">
-                              <div className="p-4 border-b">
-                                <h3 className="font-medium">
-                                  Welcome Agent Research
-                                </h3>
-                                <p className="mt-1 text-sm text-gray-500">
-                                  This is the research the welcome agent AI did
-                                  on your lead to generate the email.
-                                </p>
-                              </div>
+                          <div className='col-span-2'>
+                            <Card>
+                              <CardHeader className='pb-3 border-b'>
+                                <CardTitle className='text-base'>Welcome Agent Research</CardTitle>
+                                <CardDescription>
+                                  This is the research the welcome agent AI did on your lead to
+                                  generate the email.
+                                </CardDescription>
+                              </CardHeader>
 
-                              <Tabs
-                                defaultValue="personal"
-                                className="bg-white"
-                              >
-                                <div className="p-4">
-                                  <TabsList className="grid grid-cols-2">
+                              <Tabs defaultValue='personal' className='w-full'>
+                                <div className='p-4'>
+                                  <TabsList className='grid w-full grid-cols-2'>
                                     <TabsTrigger
-                                      value="personal"
-                                      className="flex items-center gap-2"
+                                      value='personal'
+                                      className='flex items-center gap-2'
                                     >
-                                      <User className="h-4 w-4" />
+                                      <User className='h-4 w-4' />
                                       Personal Details
                                     </TabsTrigger>
                                     <TabsTrigger
-                                      value="business"
-                                      className="flex items-center gap-2"
+                                      value='business'
+                                      className='flex items-center gap-2'
                                     >
-                                      <Building className="h-4 w-4" />
+                                      <Building className='h-4 w-4' />
                                       Business Details
                                     </TabsTrigger>
                                   </TabsList>
                                 </div>
 
-                                <div className="px-4 pb-4">
+                                <div className='px-4 pb-4'>
                                   <TabsContent
-                                    value="personal"
-                                    className="mt-0"
+                                    value='personal'
+                                    className='mt-0 focus-visible:outline-none focus-visible:ring-0'
                                   >
-                                    <div className="space-y-4 max-h-[500px] overflow-y-auto">
+                                    <div className='max-h-[500px] space-y-4 overflow-y-auto rounded-md bg-muted/30 p-4'>
                                       {email.userInfo ? (
-                                        formatMarkdownContent(
-                                          email.userInfo,
-                                        ).map((section, index) => (
-                                          <div key={index} className="text-sm">
-                                            {section
-                                              .split('\n')
-                                              .map((line, lineIndex) => {
+                                        formatMarkdownContent(email.userInfo).map(
+                                          (section, index) => (
+                                            <div key={index} className='text-sm'>
+                                              {section.split("\n").map((line, lineIndex) => {
                                                 // Handle bold text
-                                                const boldText =
-                                                  line.match(/\*\*(.*?)\*\*/g)
+                                                const boldText = line.match(/\*\*.*?\*\*/g);
                                                 if (boldText) {
-                                                  const parts =
-                                                    line.split(/(\*\*.*?\*\*)/)
+                                                  const parts = line.split(/(\*\*.*?\*\*)/);
                                                   return (
-                                                    <div
-                                                      key={lineIndex}
-                                                      className="mb-2"
-                                                    >
-                                                      {parts.map(
-                                                        (part, partIndex) => {
-                                                          if (
-                                                            part.startsWith(
-                                                              '**',
-                                                            ) &&
-                                                            part.endsWith('**')
-                                                          ) {
-                                                            // It's bold text
-                                                            return (
-                                                              <span
-                                                                key={partIndex}
-                                                                className="font-semibold"
-                                                              >
-                                                                {part.replace(
-                                                                  /\*\*/g,
-                                                                  '',
-                                                                )}
-                                                              </span>
-                                                            )
-                                                          }
+                                                    <div key={lineIndex} className='mb-2'>
+                                                      {parts.map((part, partIndex) => {
+                                                        if (
+                                                          part.startsWith("**") &&
+                                                          part.endsWith("**")
+                                                        ) {
+                                                          // It's bold text
                                                           return (
                                                             <span
                                                               key={partIndex}
+                                                              className='font-semibold'
                                                             >
-                                                              {part}
+                                                              {part.replace(/\*\*/g, "")}
                                                             </span>
-                                                          )
-                                                        },
-                                                      )}
+                                                          );
+                                                        }
+                                                        return <span key={partIndex}>{part}</span>;
+                                                      })}
                                                     </div>
-                                                  )
+                                                  );
                                                 }
 
                                                 // Handle lists
-                                                if (line.startsWith('- ')) {
+                                                if (line.startsWith("- ")) {
                                                   return (
-                                                    <div
-                                                      key={lineIndex}
-                                                      className="ml-4 mb-1 flex"
-                                                    >
-                                                      <span className="mr-2">
-                                                        •
-                                                      </span>
-                                                      <span>
-                                                        {line.substring(2)}
-                                                      </span>
+                                                    <div key={lineIndex} className='mb-1 ml-4 flex'>
+                                                      <span className='mr-2'>•</span>
+                                                      <span>{line.substring(2)}</span>
                                                     </div>
-                                                  )
+                                                  );
                                                 }
 
                                                 // Handle headers (lines ending with :)
-                                                if (line.endsWith(':')) {
+                                                if (line.endsWith(":")) {
                                                   return (
                                                     <h4
                                                       key={lineIndex}
-                                                      className="font-medium text-gray-900 mt-4 mb-2"
+                                                      className='mb-2 mt-4 font-medium'
                                                     >
                                                       {line}
                                                     </h4>
-                                                  )
+                                                  );
                                                 }
 
                                                 // Regular text
                                                 return (
                                                   <div
                                                     key={lineIndex}
-                                                    className="mb-2 text-gray-600"
+                                                    className='mb-2 text-muted-foreground'
                                                   >
                                                     {line}
                                                   </div>
-                                                )
+                                                );
                                               })}
-                                          </div>
-                                        ))
+                                            </div>
+                                          ),
+                                        )
                                       ) : (
-                                        <p className="text-sm text-gray-500">
-                                          No personal details available
-                                        </p>
+                                        <div className='flex flex-col items-center justify-center py-6 text-center'>
+                                          <AlertCircle className='h-8 w-8 text-muted-foreground/60 mb-2' />
+                                          <p className='text-sm text-muted-foreground'>
+                                            No personal details available
+                                          </p>
+                                        </div>
                                       )}
                                     </div>
                                   </TabsContent>
 
                                   <TabsContent
-                                    value="business"
-                                    className="mt-0"
+                                    value='business'
+                                    className='mt-0 focus-visible:outline-none focus-visible:ring-0'
                                   >
-                                    <div className="space-y-4 max-h-[500px] overflow-y-auto">
+                                    <div className='max-h-[500px] space-y-4 overflow-y-auto rounded-md bg-muted/30 p-4'>
                                       {email.businessInfo ? (
-                                        formatMarkdownContent(
-                                          email.businessInfo,
-                                        ).map((section, index) => (
-                                          <div key={index} className="text-sm">
-                                            {section
-                                              .split('\n')
-                                              .map((line, lineIndex) => {
+                                        formatMarkdownContent(email.businessInfo).map(
+                                          (section, index) => (
+                                            <div key={index} className='text-sm'>
+                                              {section.split("\n").map((line, lineIndex) => {
                                                 // Handle bold text
-                                                const boldText =
-                                                  line.match(/\*\*.*?\*\*/g)
+                                                const boldText = line.match(/\*\*.*?\*\*/g);
                                                 if (boldText) {
-                                                  const parts =
-                                                    line.split(/(\*\*.*?\*\*)/)
+                                                  const parts = line.split(/(\*\*.*?\*\*)/);
                                                   return (
-                                                    <div
-                                                      key={lineIndex}
-                                                      className="mb-2"
-                                                    >
-                                                      {parts.map(
-                                                        (part, partIndex) => {
-                                                          if (
-                                                            part.startsWith(
-                                                              '**',
-                                                            ) &&
-                                                            part.endsWith('**')
-                                                          ) {
-                                                            return (
-                                                              <span
-                                                                key={partIndex}
-                                                                className="font-semibold"
-                                                              >
-                                                                {part.replace(
-                                                                  /\*\*/g,
-                                                                  '',
-                                                                )}
-                                                              </span>
-                                                            )
-                                                          }
+                                                    <div key={lineIndex} className='mb-2'>
+                                                      {parts.map((part, partIndex) => {
+                                                        if (
+                                                          part.startsWith("**") &&
+                                                          part.endsWith("**")
+                                                        ) {
                                                           return (
                                                             <span
                                                               key={partIndex}
+                                                              className='font-semibold'
                                                             >
-                                                              {part}
+                                                              {part.replace(/\*\*/g, "")}
                                                             </span>
-                                                          )
-                                                        },
-                                                      )}
+                                                          );
+                                                        }
+                                                        return <span key={partIndex}>{part}</span>;
+                                                      })}
                                                     </div>
-                                                  )
+                                                  );
                                                 }
 
                                                 // Handle lists
-                                                if (line.startsWith('- ')) {
+                                                if (line.startsWith("- ")) {
                                                   return (
-                                                    <div
-                                                      key={lineIndex}
-                                                      className="ml-4 mb-1 flex"
-                                                    >
-                                                      <span className="mr-2">
-                                                        •
-                                                      </span>
-                                                      <span>
-                                                        {line.substring(2)}
-                                                      </span>
+                                                    <div key={lineIndex} className='mb-1 ml-4 flex'>
+                                                      <span className='mr-2'>•</span>
+                                                      <span>{line.substring(2)}</span>
                                                     </div>
-                                                  )
+                                                  );
                                                 }
 
                                                 // Handle headers
-                                                if (line.endsWith(':')) {
+                                                if (line.endsWith(":")) {
                                                   return (
                                                     <h4
                                                       key={lineIndex}
-                                                      className="font-medium text-gray-900 mt-4 mb-2"
+                                                      className='mb-2 mt-4 font-medium'
                                                     >
                                                       {line}
                                                     </h4>
-                                                  )
+                                                  );
                                                 }
 
                                                 // Regular text
                                                 return (
                                                   <div
                                                     key={lineIndex}
-                                                    className="mb-2 text-gray-600"
+                                                    className='mb-2 text-muted-foreground'
                                                   >
                                                     {line}
                                                   </div>
-                                                )
+                                                );
                                               })}
-                                          </div>
-                                        ))
+                                            </div>
+                                          ),
+                                        )
                                       ) : (
-                                        <p className="text-sm text-gray-500">
-                                          No business details available
-                                        </p>
+                                        <div className='flex flex-col items-center justify-center py-6 text-center'>
+                                          <AlertCircle className='h-8 w-8 text-muted-foreground/60 mb-2' />
+                                          <p className='text-sm text-muted-foreground'>
+                                            No business details available
+                                          </p>
+                                        </div>
                                       )}
                                     </div>
                                   </TabsContent>
                                 </div>
                               </Tabs>
-                            </div>
+                            </Card>
                           </div>
                         </div>
                       </div>
@@ -585,75 +575,89 @@ export default function EmailHistory() {
                 )}
               </React.Fragment>
             ))}
+            {emails.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} className='text-center'>
+                  <div className='flex flex-col items-center justify-center h-32 gap-2'>
+                    <Mail className='h-8 w-8 text-muted-foreground/60' />
+                    <p className='text-sm text-muted-foreground'>No emails found.</p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
-      </div>
+      </Card>
 
-      {/* Add pagination controls */}
-      <div className="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
-        <div className="flex flex-1 justify-between sm:hidden">
-          <Button
-            onClick={handlePreviousPage}
-            disabled={!pagination.hasPreviousPage}
-            variant="outline"
-            size="sm"
-          >
-            Previous
-          </Button>
-          <Button
-            onClick={handleNextPage}
-            disabled={!pagination.hasNextPage}
-            variant="outline"
-            size="sm"
-          >
-            Next
-          </Button>
-        </div>
-        <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm text-gray-700">
-              Showing{' '}
-              <span className="font-medium">{(currentPage - 1) * 10 + 1}</span>{' '}
-              to{' '}
-              <span className="font-medium">
-                {Math.min(currentPage * 10, pagination.totalEmails)}
-              </span>{' '}
-              of <span className="font-medium">{pagination.totalEmails}</span>{' '}
-              results
-            </p>
-          </div>
-          <div>
-            <nav
-              className="isolate inline-flex -space-x-px rounded-md shadow-sm"
-              aria-label="Pagination"
-            >
+      {pagination.totalPages > 1 && (
+        <Card className='mt-4'>
+          <div className='flex items-center justify-between px-4 py-3'>
+            <div className='flex flex-1 justify-between sm:hidden'>
               <Button
                 onClick={handlePreviousPage}
                 disabled={!pagination.hasPreviousPage}
-                variant="outline"
-                size="sm"
-                className="rounded-l-md"
+                variant='outline'
+                size='sm'
               >
-                <ChevronLeft className="h-4 w-4" />
-                <span className="ml-2">Previous</span>
+                Previous
               </Button>
-              <div className="px-4 py-2 text-sm font-semibold">
-                Page {currentPage} of {pagination.totalPages}
-              </div>
               <Button
                 onClick={handleNextPage}
                 disabled={!pagination.hasNextPage}
-                variant="outline"
-                size="sm"
-                className="rounded-r-md"
+                variant='outline'
+                size='sm'
               >
-                <span className="mr-2">Next</span>
-                <ChevronRight className="h-4 w-4" />
+                Next
               </Button>
-            </nav>
+            </div>
+            <div className='hidden sm:flex sm:flex-1 sm:items-center sm:justify-between'>
+              <div>
+                <p className='text-sm text-muted-foreground'>
+                  Showing{" "}
+                  <span className='font-medium'>
+                    {emails.length > 0 ? (currentPage - 1) * 10 + 1 : 0}
+                  </span>{" "}
+                  to{" "}
+                  <span className='font-medium'>
+                    {Math.min(currentPage * 10, pagination.totalEmails)}
+                  </span>{" "}
+                  of <span className='font-medium'>{pagination.totalEmails}</span> results
+                </p>
+              </div>
+              <div>
+                <nav
+                  className='isolate inline-flex -space-x-px rounded-md shadow-sm'
+                  aria-label='Pagination'
+                >
+                  <Button
+                    onClick={handlePreviousPage}
+                    disabled={!pagination.hasPreviousPage}
+                    variant='outline'
+                    size='sm'
+                    className='rounded-l-md'
+                  >
+                    <ChevronLeft className='h-4 w-4' />
+                    <span className='ml-2'>Previous</span>
+                  </Button>
+                  <div className='flex items-center justify-center px-4 py-2 text-sm font-medium border border-input bg-background'>
+                    Page {emails.length > 0 ? currentPage : 0} of {pagination.totalPages}
+                  </div>
+                  <Button
+                    onClick={handleNextPage}
+                    disabled={!pagination.hasNextPage}
+                    variant='outline'
+                    size='sm'
+                    className='rounded-r-md'
+                  >
+                    <span className='mr-2'>Next</span>
+                    <ChevronRight className='h-4 w-4' />
+                  </Button>
+                </nav>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        </Card>
+      )}
     </div>
-  )
+  );
 }
