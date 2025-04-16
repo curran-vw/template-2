@@ -1,6 +1,5 @@
 import { doc, getDoc } from "firebase/firestore";
-import { db, auth } from "./firebase";
-import { getMaxWorkspaceLimit } from "./workspace-utils";
+import { db, auth } from "../lib/firebase";
 
 export const userUtils = {
   async getUserData() {

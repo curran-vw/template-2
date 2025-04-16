@@ -4,7 +4,7 @@ import { AuthProvider } from "@/contexts/auth-context";
 import { Toaster } from "sonner";
 import { WorkspaceProvider } from "@/contexts/workspace-context";
 import type { Metadata } from "next";
-
+import { TanstackProvider } from "@/contexts/tanstack-provider";
 const dmSans = DM_Sans({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
@@ -21,17 +21,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang='en'>
       <body className={`${dmSans.className} antialiased min-h-screen relative`}>
-        <AuthProvider>
-          <WorkspaceProvider>{children}</WorkspaceProvider>
-        </AuthProvider>
+        <TanstackProvider>
+          <WorkspaceProvider>
+            <AuthProvider>{children}</AuthProvider>
+          </WorkspaceProvider>
+        </TanstackProvider>
         <Toaster richColors />
       </body>
     </html>

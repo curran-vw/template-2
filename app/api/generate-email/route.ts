@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { logsUtils } from "@/firebase/logs-utils";
+import { addLog } from "@/firebase/logs-utils";
 
 export async function POST(req: Request) {
   let signupInfo: any;
@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     agentId = body.agentId ?? null;
 
     // Log the start of the process
-    await logsUtils.addLog({
+    await addLog({
       type: "api",
       status: "pending",
       details: "Starting email generation process",
@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     const [userInfo, businessInfo] = await Promise.all([
       // User Info Prompt
       (async () => {
-        await logsUtils.addLog({
+        await addLog({
           type: "api",
           status: "pending",
           details: "Getting user information",
@@ -80,7 +80,7 @@ export async function POST(req: Request) {
         const data = await userInfoResponse.json();
         const info = data.choices[0].message.content;
 
-        await logsUtils.addLog({
+        await addLog({
           type: "api",
           status: "success",
           details: "Successfully retrieved user information",
@@ -94,7 +94,7 @@ export async function POST(req: Request) {
 
       // Business Info Prompt
       (async () => {
-        await logsUtils.addLog({
+        await addLog({
           type: "api",
           status: "pending",
           details: "Getting business information",
@@ -139,7 +139,7 @@ export async function POST(req: Request) {
         const data = await businessInfoResponse.json();
         const info = data.choices[0].message.content;
 
-        await logsUtils.addLog({
+        await addLog({
           type: "api",
           status: "success",
           details: "Successfully retrieved business information",
@@ -156,7 +156,7 @@ export async function POST(req: Request) {
     const [emailBody, subject] = await Promise.all([
       // Generate Email Body
       (async () => {
-        await logsUtils.addLog({
+        await addLog({
           type: "api",
           status: "pending",
           details: "Generating email body",
@@ -204,7 +204,7 @@ export async function POST(req: Request) {
         const data = await emailBodyResponse.json();
         const body = data.choices[0].message.content;
 
-        await logsUtils.addLog({
+        await addLog({
           type: "api",
           status: "success",
           details: "Successfully generated email body",
@@ -218,7 +218,7 @@ export async function POST(req: Request) {
 
       // Generate Subject Line (can start this at the same time as the body)
       (async () => {
-        await logsUtils.addLog({
+        await addLog({
           type: "api",
           status: "pending",
           details: "Generating subject line",
@@ -251,7 +251,7 @@ export async function POST(req: Request) {
         const data = await subjectResponse.json();
         const subject = data.choices[0].message.content;
 
-        await logsUtils.addLog({
+        await addLog({
           type: "api",
           status: "success",
           details: "Successfully generated subject line",
@@ -265,7 +265,7 @@ export async function POST(req: Request) {
     ]);
 
     // Log successful completion
-    await logsUtils.addLog({
+    await addLog({
       type: "api",
       status: "success",
       details: "Email generation completed successfully",
@@ -293,7 +293,7 @@ export async function POST(req: Request) {
         : error,
     );
 
-    await logsUtils.addLog({
+    await addLog({
       type: "api",
       status: "failed",
       details: "Email generation failed",

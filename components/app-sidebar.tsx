@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { LayoutDashboard, Mail, SquareTerminal, ChevronRight, History } from "lucide-react";
 
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Sidebar,
   SidebarContent,
@@ -70,11 +70,11 @@ export function AppSidebar() {
                     {[
                       {
                         title: "Add New Agent",
-                        url: "/welcome-agent/new",
+                        url: "/agents/new",
                       },
                       {
                         title: "View All Agents",
-                        url: "/welcome-agent",
+                        url: "/agents",
                       },
                     ].map((subItem) => (
                       <SidebarMenuSubItem key={subItem.title}>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/use-auth";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -35,17 +35,17 @@ export default function SignIn() {
     }
   };
 
-  useEffect(() => {
-    if (user) {
-      router.push("/dashboard");
-    }
-  }, [user]);
+  // useEffect(() => {
+  //   if (user) {
+  //     router.push("/dashboard");
+  //   }
+  // }, [user]);
 
   return (
     <div className='min-h-screen flex items-center justify-center bg-background'>
       <Card className='max-w-md w-full py-10'>
         <CardHeader className='space-y-1 items-center text-center'>
-          <div className='flex justify-center'>
+          <div className='flex justify-center mb-4'>
             <Link href='https://welcomeagent.ai' target='_blank' rel='noopener noreferrer'>
               <Image
                 src='/wa-favicon.png'

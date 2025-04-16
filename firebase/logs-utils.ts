@@ -1,20 +1,8 @@
-import { db } from "./firebase";
-import {
-  collection,
-  addDoc,
-  query,
-  orderBy,
-  getDocs,
-  QueryConstraint,
-  limit as firestoreLimit,
-  where,
-  startAfter,
-  Timestamp,
-  DocumentData,
-  QueryDocumentSnapshot,
-} from "firebase/firestore";
+"use server";
 
-const COLLECTION_NAME = "logs";
+import { requireAuth } from "@/server/auth";
+import { adminDb, adminAuth } from "../lib/firebase-admin";
+import { Timestamp } from "firebase-admin/firestore";
 
 export interface LogRecord {
   id: string;
@@ -27,126 +15,103 @@ export interface LogRecord {
   agentId?: string;
 }
 
-export const logsUtils = {
-  async addLog(data: {
-    type: "api" | "crawl" | "email";
-    status: "success" | "failed" | "pending";
-    details: string;
-    response?: string;
-    workspaceId?: string;
-    agentId?: string;
-  }) {
-    try {
-      const docRef = await addDoc(collection(db, COLLECTION_NAME), {
-        ...data,
-        timestamp: Date.now(),
-      });
-      return docRef.id;
-    } catch (error) {
-      console.error("Error adding log:", error);
-      throw error;
+export async function addLog({
+  type,
+  status,
+  details,
+  response,
+  workspaceId,
+  agentId,
+}: {
+  type: "api" | "crawl" | "email";
+  status: "success" | "failed" | "pending";
+  details: string;
+  response?: string;
+  workspaceId?: string;
+  agentId?: string;
+}) {
+  const user = await requireAuth();
+
+  try {
+    const docRef = await adminDb.collection("logs").add({
+      type,
+      status,
+      details,
+      response,
+      workspaceId,
+      agentId,
+      userId: user.id,
+      timestamp: Timestamp.now(),
+    });
+
+    return { id: docRef.id };
+  } catch (error) {
+    console.error("Error adding log:", error);
+    return { error: "Failed to add log" };
+  }
+}
+
+export async function getLogs({
+  workspaceId,
+  agentId = null,
+  logType = "all",
+  page = 1,
+  pageSize = 10,
+}: {
+  workspaceId?: string;
+  agentId?: string | null;
+  logType?: "api" | "crawl" | "email" | "all";
+  page?: number;
+  pageSize?: number;
+}) {
+  const user = await requireAuth();
+
+  try {
+    // Create base query
+    let query = adminDb
+      .collection("logs")
+      .where("userId", "==", user.id)
+      .orderBy("timestamp", "desc");
+
+    // Add filters if provided
+    if (workspaceId) {
+      query = query.where("workspaceId", "==", workspaceId);
     }
-  },
 
-  async getRecentLogs(
-    page = 1,
-    pageSize = 10,
-    logType: "api" | "crawl" | "email" | "all" = "all",
-  ) {
-    try {
-      // Create base constraints
-      const constraints: QueryConstraint[] = [orderBy("timestamp", "desc")];
-
-      // Add type filter if not 'all'
-      if (logType !== "all") {
-        constraints.push(where("type", "==", logType));
-      }
-
-      // Get total count for pagination info
-      const countQuery = query(collection(db, COLLECTION_NAME), ...constraints);
-      const countSnapshot = await getDocs(countQuery);
-      const totalLogs = countSnapshot.docs.length;
-      const totalPages = Math.max(1, Math.ceil(totalLogs / pageSize));
-
-      // Add pagination for Firestore query
-      const paginationConstraints = [...constraints, firestoreLimit(pageSize)];
-
-      let paginatedQuery;
-      let snapshot;
-
-      if (page === 1) {
-        // For first page, just use the limit
-        paginatedQuery = query(
-          collection(db, COLLECTION_NAME),
-          ...paginationConstraints,
-        );
-      } else {
-        // For subsequent pages, fetch all documents up to the start of the requested page
-        // and then get only the ones for the requested page
-        const previousPageQuery = query(
-          collection(db, COLLECTION_NAME),
-          ...constraints,
-          firestoreLimit((page - 1) * pageSize),
-        );
-
-        const previousDocs = await getDocs(previousPageQuery);
-
-        // If we have enough documents to reach the requested page
-        if (previousDocs.docs.length === (page - 1) * pageSize) {
-          // Get the last document from the previous page
-          const lastVisible = previousDocs.docs[previousDocs.docs.length - 1];
-
-          // Start after that document and limit to pageSize
-          paginatedQuery = query(
-            collection(db, COLLECTION_NAME),
-            ...constraints,
-            startAfter(lastVisible),
-            firestoreLimit(pageSize),
-          );
-        } else {
-          // Not enough documents to reach the requested page
-          return {
-            logs: [],
-            pagination: {
-              currentPage: page,
-              totalPages,
-              totalLogs,
-              hasNextPage: false,
-              hasPreviousPage: page > 1,
-            },
-          };
-        }
-      }
-
-      // Execute the query
-      snapshot = await getDocs(paginatedQuery);
-
-      // Map the documents to the expected format
-      const logs = snapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          timestamp: new Date(data.timestamp),
-          type: data.type as "api" | "crawl" | "email",
-          status: data.status as "success" | "failed" | "pending",
-          details: data.details,
-        } as LogRecord;
-      });
-
-      return {
-        logs,
-        pagination: {
-          currentPage: page,
-          totalPages,
-          totalLogs,
-          hasNextPage: page < totalPages,
-          hasPreviousPage: page > 1,
-        },
-      };
-    } catch (error) {
-      console.error("Error getting logs:", error);
-      throw error;
+    if (agentId) {
+      query = query.where("agentId", "==", agentId);
     }
-  },
-};
+
+    if (logType !== "all") {
+      query = query.where("type", "==", logType);
+    }
+
+    const snapshot = await query.get();
+    const totalLogs = snapshot.docs.length;
+
+    // Calculate pagination
+    const startIndex = (page - 1) * pageSize;
+    const paginatedDocs = snapshot.docs.slice(startIndex, startIndex + pageSize);
+
+    const logs = paginatedDocs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+      timestamp: doc.data().timestamp.toDate(),
+    })) as LogRecord[];
+
+    return {
+      logs,
+      pagination: {
+        currentPage: page,
+        totalPages: Math.ceil(totalLogs / pageSize),
+        totalLogs,
+        hasNextPage: startIndex + pageSize < totalLogs,
+        hasPreviousPage: page > 1,
+      },
+      success: "Logs retrieved successfully",
+    };
+  } catch (error) {
+    console.error("Error getting logs:", error);
+    return { error: "Failed to retrieve logs" };
+  }
+}

@@ -1,6 +1,6 @@
 import { addDoc, collection, onSnapshot } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
-import { app, auth, db } from "./firebase";
+import { app, auth, db } from "../lib/firebase";
 
 export const stripeUtils = {
   async getUserPlan() {
@@ -13,6 +13,9 @@ export const stripeUtils = {
     await currentUser.getIdToken(true);
     const decodedToken = await currentUser.getIdTokenResult();
     const plan = decodedToken.claims.stripeRole;
+    console.log("decodedToken", decodedToken.claims);
+
+    console.log("plan", plan);
 
     if (!plan) {
       return "free";
@@ -23,12 +26,7 @@ export const stripeUtils = {
     const userId = auth.currentUser?.uid;
     if (!userId) throw new Error("User is not authenticated");
 
-    const checkoutSessionRef = collection(
-      db,
-      "customers",
-      userId,
-      "checkout_sessions",
-    );
+    const checkoutSessionRef = collection(db, "customers", userId, "checkout_sessions");
 
     const docRef = await addDoc(checkoutSessionRef, {
       price: priceId,

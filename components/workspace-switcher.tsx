@@ -4,11 +4,12 @@ import { useState, useEffect } from "react";
 import { Check, ChevronsUpDown, Loader2, Plus, Settings, Sparkles, X, Network } from "lucide-react";
 import { toast } from "sonner";
 
-import { useWorkspace } from "@/hooks/useWorkspace";
-import { useAuth } from "@/hooks/useAuth";
+import { useWorkspace } from "@/hooks/use-workspace";
+import { useAuth } from "@/hooks/use-auth";
 import { createWorkspace } from "@/firebase/workspace-utils";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -30,10 +31,9 @@ import { WorkspaceSettings } from "./workspace-settings";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
 
 export function WorkspaceSwitcher() {
-  const { workspace, workspaces, setWorkspace, refreshWorkspaces } = useWorkspace();
+  const { workspace, workspaces, setWorkspace, setWorkspaces } = useWorkspace();
   const { user, loading, setUser } = useAuth();
   const [isCreating, setIsCreating] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -42,67 +42,29 @@ export function WorkspaceSwitcher() {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Only refresh workspaces once when component mounts
-  useEffect(() => {
-    const initialLoad = async () => {
-      await refreshWorkspaces();
-    };
-    initialLoad();
-  }, [refreshWorkspaces]);
-
   const handleCreateWorkspace = async () => {
-    if (!user || !newWorkspaceName.trim()) return;
+    if (!user) return;
 
     setIsCreating(true);
-    try {
-      // Check for duplicate names
-      const existingWorkspace = workspaces.find(
-        (w) => w.name.toLowerCase() === newWorkspaceName.trim().toLowerCase(),
-      );
+    const { workspace, error, success } = await createWorkspace({
+      name: newWorkspaceName.trim(),
+    });
 
-      if (existingWorkspace) {
-        toast.error("Duplicate workspace name", {
-          description: "A workspace with this name already exists",
-        });
-        return;
-      }
-
-      // Use the workspaceUtils function instead of directly adding to Firestore
-      const result = await createWorkspace(newWorkspaceName.trim());
-
-      if ("error" in result) {
-        toast.error("Creation failed", {
-          description: result.error,
-        });
-        return;
-      }
-
-      await refreshWorkspaces();
-
+    if (error) {
+      toast.error("Error", {
+        description: error,
+      });
+    } else if (success) {
       setShowCreateDialog(false);
-      setWorkspace(result);
+      setWorkspace(workspace);
+      setWorkspaces([...workspaces, workspace]);
       setNewWorkspaceName("");
-      toast.success("Workspace created", {
-        description: `"${newWorkspaceName.trim()}" has been created successfully`,
+      toast.success("Success", {
+        description: success,
       });
-
-      // Update the auth context with the new workspace count
-      if (user) {
-        setTimeout(() => {
-          setUser({
-            ...user,
-            remainingWorkspaces: user.remainingWorkspaces - 1,
-          });
-        }, 500);
-      }
-    } catch (error) {
-      console.error("Error creating workspace:", error);
-      toast.error("Creation failed", {
-        description: "An unexpected error occurred while creating the workspace",
-      });
-    } finally {
-      setIsCreating(false);
+      setUser({ ...user, usage: { ...user.usage, workspaces: user.usage.workspaces + 1 } });
     }
+    setIsCreating(false);
   };
 
   const filteredWorkspaces = searchQuery
@@ -110,7 +72,7 @@ export function WorkspaceSwitcher() {
     : workspaces;
 
   if (loading) {
-    return <Skeleton className='h-10 w-[150px] lg:w-64' />;
+    return <Skeleton className='h-8 w-[150px] lg:w-64' />;
   }
 
   return (
@@ -212,9 +174,9 @@ export function WorkspaceSwitcher() {
           >
             <Plus className='mr-2 h-4 w-4' />
             Create Workspace
-            {!!user?.remainingWorkspaces && user?.remainingWorkspaces > 0 && (
+            {user?.limits.workspaces && user?.usage.workspaces && (
               <Badge variant='outline' className='ml-auto'>
-                {user.remainingWorkspaces} left
+                {user?.limits.workspaces - user?.usage.workspaces}
               </Badge>
             )}
           </DropdownMenuItem>
@@ -230,7 +192,7 @@ export function WorkspaceSwitcher() {
               Add a new workspace to manage your welcome agents.
             </DialogDescription>
           </DialogHeader>
-          {!user?.remainingWorkspaces ? (
+          {!user ? (
             <>
               <Alert variant='destructive'>
                 <AlertTitle>Workspace limit reached</AlertTitle>
@@ -239,7 +201,7 @@ export function WorkspaceSwitcher() {
                 </AlertDescription>
               </Alert>
               <Button size='lg' variant='default' asChild className='w-full'>
-                <Link href='/subscribe'>
+                <Link href='/pricing'>
                   <Sparkles className='mr-2 h-4 w-4' />
                   Upgrade Plan
                 </Link>
@@ -271,7 +233,7 @@ export function WorkspaceSwitcher() {
                 </Button>
                 <Button
                   onClick={handleCreateWorkspace}
-                  disabled={isCreating || !newWorkspaceName.trim() || !user?.remainingWorkspaces}
+                  disabled={isCreating || !newWorkspaceName.trim()}
                 >
                   {isCreating ? (
                     <>

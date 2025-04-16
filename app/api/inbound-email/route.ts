@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { mailgunUtils } from "@/firebase/mailgun-utils";
-import { welcomeAgentUtils } from "@/firebase/welcome-agent-utils";
-import { gmailUtils } from "@/firebase/gmail-utils";
+import * as mailgunUtils from "@/firebase/mailgun-utils";
+import * as welcomeAgentUtils from "@/firebase/welcome-agent-utils";
+import * as gmailUtils from "@/firebase/gmail-utils";
 
 export async function POST(request: Request) {
   try {
@@ -18,16 +18,17 @@ export async function POST(request: Request) {
     // Find the Welcome Agent
     const localPart = recipient.split("@")[0];
 
-    const notificationEmail = await mailgunUtils.findByLocalPart(localPart);
+    const { notificationEmail } = await mailgunUtils.findByLocalPart({ localPart });
     if (!notificationEmail) {
       console.error("No notification email found for:", localPart);
       return NextResponse.json({ error: "Invalid notification email" }, { status: 404 });
     }
 
     // Get the agent configuration
-    const agent = await welcomeAgentUtils.getWelcomeAgent(notificationEmail.agentId);
+    const { agent } = await welcomeAgentUtils.getWelcomeAgent({
+      agentId: notificationEmail.agentId,
+    });
     if (!agent) {
-      console.error("Welcome agent not found:", notificationEmail.agentId);
       return NextResponse.json({ error: "Welcome agent not found" }, { status: 404 });
     }
 
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
     };
 
     // Generate welcome email
-    const emailContent = await welcomeAgentUtils.generateWelcomeEmail(agent, signupInfo);
+    const emailContent = await welcomeAgentUtils.generateWelcomeEmail({ agent, signupInfo });
 
     // Check if email should be reviewed before sending
     const shouldReview = agent.configuration?.settings?.reviewBeforeSending ?? false;
@@ -69,7 +70,9 @@ export async function POST(request: Request) {
     // Only send if review is not required
     if (agent.configuration?.emailAccount) {
       // Get the Gmail connection for this email account
-      const connection = await gmailUtils.getConnectionByEmail(agent.configuration.emailAccount);
+      const { connection } = await gmailUtils.getConnectionByEmail({
+        email: agent.configuration.emailAccount,
+      });
       if (!connection) {
         throw new Error(`No Gmail connection found for ${agent.configuration.emailAccount}`);
       }
@@ -78,8 +81,8 @@ export async function POST(request: Request) {
         workspaceId,
         connectionId: connection.id!,
         to: recipientEmail,
-        subject: emailContent.subject,
-        body: emailContent.body,
+        subject: emailContent?.subject,
+        body: emailContent?.body,
       });
     } else {
       console.warn("No email account configured for agent:", {

@@ -11,6 +11,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { LoadingSpinner } from "./loading-spinner";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -21,7 +22,7 @@ interface ConfirmDialogProps {
   description: string;
   confirmText?: string;
   cancelText?: string;
-  variant?: "default" | "destructive";
+  loading?: boolean;
 }
 
 export function ConfirmDialog({
@@ -33,7 +34,7 @@ export function ConfirmDialog({
   description,
   confirmText = "Continue",
   cancelText = "Cancel",
-  variant = "default",
+  loading = false,
 }: ConfirmDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -48,15 +49,15 @@ export function ConfirmDialog({
               {cancelText}
             </Button>
           </AlertDialogCancel>
-          <AlertDialogAction asChild>
-            <Button
-              variant='default'
-              onClick={onConfirm}
-              className='bg-black hover:bg-black/90 shadow-none'
-            >
-              {confirmText}
-            </Button>
-          </AlertDialogAction>
+          <Button
+            variant='default'
+            onClick={onConfirm}
+            className='bg-black hover:bg-black/90 shadow-none'
+            disabled={loading}
+          >
+            {loading && <LoadingSpinner />}
+            {confirmText}
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

@@ -1,177 +1,136 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { auth } from "../firebase/firebase";
-import { db } from "../firebase/firebase";
-import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import { Workspace } from "../types/workspace";
-
-const WORKSPACE_STORAGE_KEY = "lastSelectedWorkspaceId";
+import { WelcomeAgent } from "../types/welcome-agent";
+import { getWorkspaceWelcomeAgents } from "@/firebase/welcome-agent-utils";
+import { useQuery } from "@tanstack/react-query";
+import { auth } from "@/lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import { getUserWorkspaces } from "@/firebase/workspace-utils";
 
 interface WorkspaceContextType {
   workspace: Workspace | null;
   setWorkspace: (workspace: Workspace | null) => void;
   workspaces: Workspace[];
-  loading: boolean;
-  error: Error | null;
-  refreshWorkspaces: () => Promise<void>;
+  setWorkspaces: (workspaces: Workspace[]) => void;
+  agents: WelcomeAgent[];
+  setAgents: (agents: WelcomeAgent[]) => void;
+  agentsLoading: boolean;
+  workspacesLoading: boolean;
 }
 
-export const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
-
-export function useWorkspace() {
-  const context = useContext(WorkspaceContext);
-  if (context === undefined) {
-    throw new Error("useWorkspace must be used within a WorkspaceProvider");
-  }
-  return context;
-}
+const WORKSPACE_STORAGE_KEY = "currentWorkspace";
 
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
-  const [workspace, setWorkspaceState] = useState<Workspace | null>(null);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-  // Track if we've loaded workspaces at least once
-  const [hasLoadedWorkspaces, setHasLoadedWorkspaces] = useState(false);
-  // Track the last time we loaded workspaces
-  const [lastLoadTime, setLastLoadTime] = useState(0);
+  const [workspace, setWorkspaceState] = useState<Workspace | null>(null);
+  const [agents, setAgents] = useState<WelcomeAgent[]>([]);
+  const [agentsLoading, setAgentsLoading] = useState(true);
+  const [workspacesLoading, setWorkspacesLoading] = useState(true);
 
-  // Wrapper for setWorkspace that also updates localStorage
-  const setWorkspace = useCallback((newWorkspace: Workspace | null) => {
-    // Ensure the user has access to this workspace before setting it
-    if (newWorkspace && auth.currentUser) {
-      // Only allow setting if user is a member of the workspace
-      if (newWorkspace.members.includes(auth.currentUser.uid)) {
-        setWorkspaceState(newWorkspace);
-        if (newWorkspace.id) {
-          localStorage.setItem(WORKSPACE_STORAGE_KEY, newWorkspace.id);
-        }
-      } else {
-        console.error("Access denied: User is not a member of this workspace");
-        return;
-      }
-    } else if (newWorkspace === null) {
-      setWorkspaceState(null);
+  // Custom setter that also updates localStorage
+  const setWorkspace = (newWorkspace: Workspace | null) => {
+    setWorkspaceState(newWorkspace);
+    if (newWorkspace) {
+      localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(newWorkspace));
+    } else {
       localStorage.removeItem(WORKSPACE_STORAGE_KEY);
     }
-  }, []);
+  };
 
-  const loadWorkspaces = useCallback(
-    async (userId: string) => {
-      try {
-        // Only get workspaces where the user is a member
-        const workspacesQuery = query(
-          collection(db, "workspaces"),
-          where("members", "array-contains", userId),
-        );
-        const querySnapshot = await getDocs(workspacesQuery);
-        const workspacesList = querySnapshot.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            name: data.name,
-            ownerId: data.ownerId,
-            members: data.members || [],
-            createdAt: new Date(data.createdAt).toISOString(),
-          } as Workspace;
-        });
+  // Set workspaces and restore the current workspace from localStorage
+  const handleSetWorkspaces = (newWorkspaces: Workspace[]) => {
+    setWorkspaces(newWorkspaces);
 
-        setWorkspaces(workspacesList);
-        setHasLoadedWorkspaces(true);
-        setLastLoadTime(Date.now());
+    if (newWorkspaces.length > 0) {
+      // Try to get the saved workspace from localStorage
+      const savedWorkspaceJson = localStorage.getItem(WORKSPACE_STORAGE_KEY);
 
-        // Get the last selected workspace ID from localStorage
-        const lastWorkspaceId = localStorage.getItem(WORKSPACE_STORAGE_KEY);
+      if (savedWorkspaceJson) {
+        try {
+          const savedWorkspace = JSON.parse(savedWorkspaceJson);
+          // Check if the saved workspace still exists in the new workspaces
+          const workspaceExists = newWorkspaces.some((w) => w.id === savedWorkspace.id);
 
-        if (workspacesList.length > 0) {
-          // Try to find the last selected workspace in the current list
-          const lastWorkspace = lastWorkspaceId
-            ? workspacesList.find((w) => w.id === lastWorkspaceId)
-            : null;
-
-          // If the last workspace exists in the list, use it; otherwise use the first workspace
-          if (!workspace) {
-            setWorkspace(lastWorkspace || workspacesList[0]);
+          if (workspaceExists) {
+            // Find the full workspace object with updated data
+            const currentWorkspace = newWorkspaces.find((w) => w.id === savedWorkspace.id) || null;
+            setWorkspaceState(currentWorkspace);
           } else {
-            // Verify current workspace is still valid for this user
-            const isCurrentWorkspaceValid = workspacesList.some(
-              (w) => w.id === workspace.id && w.members.includes(userId),
-            );
-
-            if (!isCurrentWorkspaceValid) {
-              // If current workspace is no longer valid, switch to another one
-              setWorkspace(workspacesList[0]);
-            }
+            // If saved workspace no longer exists, use the first one
+            setWorkspace(newWorkspaces[0]);
           }
-        } else {
-          // User has no workspaces, clear current workspace
-          setWorkspace(null);
+        } catch (error) {
+          // If there's an error parsing, use the first workspace
+          setWorkspace(newWorkspaces[0]);
         }
-      } catch (err) {
-        console.error("Error loading workspaces:", err);
-        setError(err instanceof Error ? err : new Error("Failed to load workspaces"));
+      } else {
+        // If no saved workspace, use the first one
+        setWorkspace(newWorkspaces[0]);
       }
-    },
-    [workspace, setWorkspace],
-  );
-
-  // Add a function to refresh workspaces
-  const refreshWorkspaces = useCallback(async () => {
-    const user = auth.currentUser;
-    if (user) {
-      await loadWorkspaces(user.uid);
+    } else {
+      // If there are no workspaces, clear the current workspace
+      setWorkspace(null);
     }
-  }, [loadWorkspaces]);
+  };
 
-  // Set up a regular refresh interval for workspaces
-  // useEffect(() => {
-  //   const checkForWorkspaces = async () => {
-  //     const user = auth.currentUser
-  //     if (user) {
-  //       // If it's been more than 2 seconds since we last loaded workspaces, or we haven't loaded them yet
-  //       const now = Date.now()
-  //       if (!hasLoadedWorkspaces || now - lastLoadTime > 2000) {
-  //
-  //         await loadWorkspaces(user.uid)
-  //       }
-  //     }
-  //   }
+  const { data: agentsData } = useQuery({
+    queryKey: ["workspace-agents", workspace?.id],
+    queryFn: async () => {
+      setAgentsLoading(true);
+      if (!workspace) return { agents: [] };
+      return await getWorkspaceWelcomeAgents({ workspaceId: workspace.id });
+    },
 
-  //   // Check immediately and then every 3 seconds for new workspaces
-  //   // This helps ensure we pick up any workspaces created in AuthContext
-  //   const interval = setInterval(checkForWorkspaces, 3000)
-  //   checkForWorkspaces()
-
-  //   return () => clearInterval(interval)
-  // }, [hasLoadedWorkspaces, lastLoadTime, loadWorkspaces])
+    enabled: !!workspace,
+  });
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        await loadWorkspaces(user.uid);
-      } else {
-        setWorkspaces([]);
-        setHasLoadedWorkspaces(false);
-        // Don't clear the workspace here to persist it between sessions
+    if (agentsData) {
+      setAgents(agentsData.agents);
+      setAgentsLoading(false);
+    }
+  }, [agentsData]);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        const { workspaces } = await getUserWorkspaces();
+        setWorkspaces(workspaces);
+        handleSetWorkspaces(workspaces);
+        setWorkspacesLoading(false);
       }
-      setLoading(false);
     });
 
-    return () => unsubscribe();
-  }, [loadWorkspaces]);
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
-  const value = React.useMemo(
-    () => ({
-      workspace,
-      setWorkspace,
-      workspaces,
-      loading,
-      error,
-      refreshWorkspaces,
-    }),
-    [workspace, workspaces, loading, error, refreshWorkspaces, setWorkspace],
+  return (
+    <WorkspaceContext.Provider
+      value={{
+        workspace,
+        setWorkspace,
+        workspaces,
+        setWorkspaces: handleSetWorkspaces,
+        agents,
+        setAgents,
+        agentsLoading,
+        workspacesLoading,
+      }}
+    >
+      {children}
+    </WorkspaceContext.Provider>
   );
-
-  return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 }
+
+export const WorkspaceContext = createContext<WorkspaceContextType | null>(null);
+export const useWorkspaceContext = () => {
+  const context = useContext(WorkspaceContext);
+  if (!context) {
+    throw new Error("useWorkspaceContext must be used within a WorkspaceProvider");
+  }
+  return context;
+};

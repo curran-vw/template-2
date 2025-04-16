@@ -1,19 +1,11 @@
-import { db } from "./firebase";
-import {
-  collection,
-  query,
-  where,
-  orderBy,
-  getDocs,
-  doc,
-  updateDoc,
-  addDoc,
-  Timestamp,
-  getDoc,
-} from "firebase/firestore";
-import { gmailUtils } from "./gmail-utils";
+"use server";
 
-interface EmailRecord {
+import { adminDb, adminAuth } from "../lib/firebase-admin";
+import { Timestamp } from "firebase-admin/firestore";
+import * as gmailUtils from "./gmail-utils";
+import { requireAuth } from "@/server/auth";
+
+export interface EmailRecord {
   id: string;
   recipientEmail: string;
   status: "sent" | "under_review" | "denied" | "failed";
@@ -21,212 +13,236 @@ interface EmailRecord {
   agentId: string;
   agentName: string;
   subject: string;
-  body: string;
-  workspaceId: string;
-  error?: string;
-  gmailConnectionId?: string;
-  userInfo?: string;
-  businessInfo?: string;
 }
 
-export const emailHistoryUtils = {
-  async getEmailHistory(
-    workspaceId: string,
-    agentId: string | null = null,
-    page: number = 1,
-    pageSize: number = 10,
-  ) {
-    try {
-      // Create query constraints array
-      const constraints = [
-        where("workspaceId", "==", workspaceId),
-        orderBy("createdAt", "desc"),
-      ];
+export async function getEmailHistory({
+  workspaceId,
+  agentId = null,
+  page = 1,
+  pageSize = 10,
+}: {
+  workspaceId: string;
+  agentId?: string | null;
+  page?: number;
+  pageSize?: number;
+}) {
+  await requireAuth();
+  try {
+    // Create query constraints array
+    let query = adminDb
+      .collection("emailHistory")
+      .where("workspaceId", "==", workspaceId)
+      .orderBy("createdAt", "desc");
 
-      // Add agentId constraint if provided
-      if (agentId) {
-        constraints.unshift(where("agentId", "==", agentId));
-      }
-
-      // Create query with all constraints
-      const emailsQuery = query(collection(db, "emailHistory"), ...constraints);
-
-      const snapshot = await getDocs(emailsQuery);
-      const totalEmails = snapshot.docs.length;
-
-      // Calculate pagination
-      const startIndex = (page - 1) * pageSize;
-      const paginatedDocs = snapshot.docs.slice(
-        startIndex,
-        startIndex + pageSize,
-      );
-
-      const emails = paginatedDocs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: (doc.data().createdAt as Timestamp).toDate(),
-      })) as EmailRecord[];
-
-      return {
-        emails,
-        pagination: {
-          currentPage: page,
-          totalPages: Math.ceil(totalEmails / pageSize),
-          totalEmails,
-          hasNextPage: startIndex + pageSize < totalEmails,
-          hasPreviousPage: page > 1,
-        },
-      };
-    } catch (error) {
-      console.error("Error fetching email history:", error);
-      throw error;
+    // Add agentId constraint if provided
+    if (agentId) {
+      query = query.where("agentId", "==", agentId);
     }
-  },
 
-  async updateEmailStatus(
-    emailId: string,
-    status: "sent" | "denied",
-    workspaceId: string,
-  ) {
-    try {
-      const docRef = doc(db, "emailHistory", emailId);
-      const emailDoc = await getDoc(docRef);
+    const snapshot = await query.get();
+    const totalEmails = snapshot.docs.length;
 
-      if (!emailDoc.exists()) {
-        throw new Error("Email record not found");
+    // Calculate pagination
+    const startIndex = (page - 1) * pageSize;
+    const paginatedDocs = snapshot.docs.slice(startIndex, startIndex + pageSize);
+
+    const emails = paginatedDocs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt.toDate(),
+    })) as EmailRecord[];
+
+    console.log("emails", emails);
+
+    return {
+      emails: emails.map((email) => ({
+        id: email.id,
+        recipientEmail: email.recipientEmail,
+        status: email.status,
+        createdAt: email.createdAt,
+        agentId: email.agentId,
+        agentName: email.agentName,
+        subject: email.subject,
+      })),
+      pagination: {
+        currentPage: page,
+        totalPages: Math.ceil(totalEmails / pageSize),
+        totalEmails,
+        hasNextPage: startIndex + pageSize < totalEmails,
+        hasPreviousPage: page > 1,
+      },
+      success: "Email history retrieved successfully",
+    };
+  } catch (error) {
+    console.error("Error fetching email history:", error);
+    return { error: "Failed to fetch email history" };
+  }
+}
+
+export async function updateEmailStatus({
+  emailId,
+  status,
+  workspaceId,
+}: {
+  emailId: string;
+  status: "sent" | "denied";
+  workspaceId: string;
+}) {
+  const user = await requireAuth();
+
+  try {
+    const docRef = adminDb.collection("emailHistory").doc(emailId);
+    const emailDoc = await docRef.get();
+
+    if (!emailDoc.exists) {
+      return { error: "Email record not found" };
+    }
+
+    const emailData = emailDoc.data();
+
+    // If approving the email, send it
+    if (status === "sent") {
+      if (!emailData?.gmailConnectionId) {
+        return { error: "No Gmail connection ID found for this email" };
       }
 
-      const emailData = emailDoc.data();
+      try {
+        // First verify the Gmail connection is still valid
+        const connection = await gmailUtils.getConnection(emailData.gmailConnectionId);
 
-      // If approving the email, send it
-      if (status === "sent") {
-        if (!emailData.gmailConnectionId) {
-          throw new Error("No Gmail connection ID found for this email");
+        if (!connection) {
+          return { error: "Gmail connection no longer exists" };
         }
 
-        try {
-          // First verify the Gmail connection is still valid
-          const connection = await gmailUtils.getConnection(
-            emailData.gmailConnectionId,
-          );
-          if (!connection) {
-            throw new Error("Gmail connection no longer exists");
-          }
+        const { error: sendError } = await gmailUtils.sendEmail({
+          workspaceId,
+          connectionId: emailData.gmailConnectionId,
+          to: emailData.recipientEmail,
+          subject: emailData.subject,
+          body: emailData.body,
+        });
 
-          await gmailUtils.sendEmail({
-            workspaceId,
-            connectionId: emailData.gmailConnectionId,
-            to: emailData.recipientEmail,
-            subject: emailData.subject,
-            body: emailData.body,
-          });
-
-          // Update the status and add sent timestamp
-          await updateDoc(docRef, {
-            status,
-            updatedAt: Timestamp.now(),
-            sentAt: Timestamp.now(),
-          });
-        } catch (sendError) {
-          console.error("Error sending email:", sendError);
+        if (sendError) {
           // If sending fails, mark as failed with detailed error message
-          await updateDoc(docRef, {
+          await docRef.update({
             status: "failed",
-            error:
-              sendError instanceof Error
-                ? sendError.message
-                : "Failed to send email",
+            error: sendError,
             updatedAt: Timestamp.now(),
           });
-          throw sendError;
+          return { error: sendError };
         }
-      } else {
-        // Just update status for non-send actions (like deny)
-        await updateDoc(docRef, {
+
+        // Update the status and add sent timestamp
+        await docRef.update({
           status,
           updatedAt: Timestamp.now(),
+          sentAt: Timestamp.now(),
         });
+      } catch (sendError) {
+        console.error("Error sending email:", sendError);
+        // If sending fails, mark as failed with detailed error message
+        await docRef.update({
+          status: "failed",
+          error: sendError instanceof Error ? sendError.message : "Failed to send email",
+          updatedAt: Timestamp.now(),
+        });
+        return { error: "Failed to send email" };
       }
-
-      return true;
-    } catch (error) {
-      console.error("Error updating email status:", error);
-      throw error;
+    } else {
+      // Just update status for non-send actions (like deny)
+      await docRef.update({
+        status,
+        updatedAt: Timestamp.now(),
+      });
     }
-  },
 
-  async getEmailById(emailId: string) {
-    try {
-      const emailRef = doc(db, "emailHistory", emailId);
-      const emailDoc = await getDoc(emailRef);
-      if (emailDoc.exists()) {
-        return {
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating email status:", error);
+    return { error: "Failed to update email status" };
+  }
+}
+
+export async function getEmailById({ emailId }: { emailId: string }) {
+  const user = await requireAuth();
+
+  try {
+    const emailRef = adminDb.collection("emailHistory").doc(emailId);
+    const emailDoc = await emailRef.get();
+
+    if (emailDoc.exists) {
+      return {
+        email: {
           id: emailDoc.id,
           ...emailDoc.data(),
-        } as EmailRecord;
-      }
-      return null;
-    } catch (error) {
-      console.error("Error fetching email:", error);
-      throw error;
-    }
-  },
-
-  async createEmailRecord({
-    recipientEmail,
-    agentId,
-    agentName,
-    workspaceId,
-    subject,
-    body,
-    status = "under_review",
-    gmailConnectionId,
-    error,
-    userInfo,
-    businessInfo,
-  }: {
-    recipientEmail: string;
-    agentId: string;
-    agentName: string;
-    workspaceId: string;
-    subject: string;
-    body: string;
-    status?: "sent" | "under_review" | "denied" | "failed";
-    gmailConnectionId?: string;
-    error?: string;
-    userInfo?: string;
-    businessInfo?: string;
-  }) {
-    try {
-      // Create base record with required fields
-      const emailRecord: Record<string, any> = {
-        recipientEmail,
-        agentId,
-        agentName,
-        workspaceId,
-        subject,
-        body,
-        status,
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now(),
-        userInfo,
-        businessInfo,
+          createdAt: emailDoc.data()?.createdAt.toDate(),
+        } as EmailRecord,
       };
-
-      // Only add optional fields if they are defined
-      if (gmailConnectionId) {
-        emailRecord.gmailConnectionId = gmailConnectionId;
-      }
-
-      if (error) {
-        emailRecord.error = error;
-      }
-
-      const docRef = await addDoc(collection(db, "emailHistory"), emailRecord);
-      return docRef.id;
-    } catch (error) {
-      console.error("Error creating email record:", error);
-      throw error;
     }
-  },
-};
+
+    return { error: "Email not found" };
+  } catch (error) {
+    console.error("Error fetching email:", error);
+    return { error: "Failed to fetch email" };
+  }
+}
+
+export async function createEmailRecord({
+  recipientEmail,
+  agentId,
+  agentName,
+  workspaceId,
+  subject,
+  body,
+  status = "under_review",
+  gmailConnectionId,
+  error,
+  userInfo,
+  businessInfo,
+}: {
+  recipientEmail: string;
+  agentId: string;
+  agentName: string;
+  workspaceId: string;
+  subject: string;
+  body: string;
+  status?: "sent" | "under_review" | "denied" | "failed";
+  gmailConnectionId?: string;
+  error?: string;
+  userInfo?: string;
+  businessInfo?: string;
+}) {
+  const user = await requireAuth();
+
+  try {
+    // Create base record with required fields
+    const emailRecord: Record<string, any> = {
+      recipientEmail,
+      agentId,
+      agentName,
+      workspaceId,
+      subject,
+      body,
+      status,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+      userInfo,
+      businessInfo,
+    };
+
+    // Only add optional fields if they are defined
+    if (gmailConnectionId) {
+      emailRecord.gmailConnectionId = gmailConnectionId;
+    }
+
+    if (error) {
+      emailRecord.error = error;
+    }
+
+    const docRef = await adminDb.collection("emailHistory").add(emailRecord);
+    return { id: docRef.id, success: true };
+  } catch (error) {
+    console.error("Error creating email record:", error);
+    return { error: "Failed to create email record" };
+  }
+}

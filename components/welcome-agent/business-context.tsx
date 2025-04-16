@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Loader2, Check, RefreshCw, ChevronRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { useCrawler } from "@/hooks/useCrawler";
+import { useCrawler } from "@/hooks/use-crawler";
 
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";

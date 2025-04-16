@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import * as cheerio from "cheerio";
-import { logsUtils } from "@/firebase/logs-utils";
+import { addLog } from "@/firebase/logs-utils";
+import { requireAuth } from "@/server/auth";
 
 export async function POST(req: Request) {
+  await requireAuth();
+
   let url: string = "";
   let workspaceId: string = "";
   let agentId: string = "";
@@ -18,7 +21,7 @@ export async function POST(req: Request) {
       new URL(url);
     } catch (e) {
       console.error("Invalid URL:", e);
-      await logsUtils.addLog({
+      await addLog({
         type: "crawl",
         status: "failed",
         details: `Invalid URL: ${url}`,
@@ -29,7 +32,7 @@ export async function POST(req: Request) {
     }
 
     // Create initial log entry
-    await logsUtils.addLog({
+    await addLog({
       type: "crawl",
       status: "pending",
       details: `Starting crawl of ${url}`,
@@ -46,7 +49,7 @@ export async function POST(req: Request) {
     });
 
     if (!response.ok) {
-      await logsUtils.addLog({
+      await addLog({
         type: "crawl",
         status: "failed",
         details: `Failed to fetch ${url}`,
@@ -93,7 +96,7 @@ export async function POST(req: Request) {
     // Now let's summarize with GPT4o-mini via OpenRouter
 
     // Log the OpenRouter API call
-    await logsUtils.addLog({
+    await addLog({
       type: "api",
       status: "pending",
       details: `Sending content to OpenRouter for summarization`,
@@ -127,7 +130,7 @@ export async function POST(req: Request) {
 
     if (!openRouterResponse.ok) {
       const errorText = await openRouterResponse.text();
-      await logsUtils.addLog({
+      await addLog({
         type: "api",
         status: "failed",
         details: "OpenRouter API error",
@@ -143,7 +146,7 @@ export async function POST(req: Request) {
     const summary = aiResponse.choices[0].message.content;
 
     // Log successful completion
-    await logsUtils.addLog({
+    await addLog({
       type: "crawl",
       status: "success",
       details: `Successfully crawled and summarized ${url}`,
@@ -158,7 +161,7 @@ export async function POST(req: Request) {
       summary,
     });
   } catch (error) {
-    await logsUtils.addLog({
+    await addLog({
       type: "crawl",
       status: "failed",
       details: `Error processing ${url || "unknown URL"}`,

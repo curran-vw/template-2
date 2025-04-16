@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
+import { GMAIL_SCOPES } from "@/types/gmail";
 
 export async function GET() {
   const headersList = headers();
@@ -22,7 +23,6 @@ export async function GET() {
     // Production domain
     redirectUri = `${productionUrl}/api/google/callback`;
   }
-  console.log("Redirect URI:", redirectUri);
 
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
   if (!clientId) {
@@ -34,8 +34,7 @@ export async function GET() {
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: "code",
-    scope:
-      "https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile",
+    scope: GMAIL_SCOPES.join(" "),
     access_type: "offline",
     prompt: "consent",
   });

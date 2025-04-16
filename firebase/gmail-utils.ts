@@ -1,15 +1,8 @@
-import { auth, db } from "./firebase";
-import {
-  doc,
-  setDoc,
-  getDoc,
-  collection,
-  query,
-  where,
-  getDocs,
-  deleteDoc,
-  increment,
-} from "firebase/firestore";
+"use server";
+
+import { requireAuth } from "@/server/auth";
+import { adminAuth, adminDb } from "../lib/firebase-admin";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { encode } from "js-base64";
 
 export interface GmailTokens {
@@ -39,160 +32,155 @@ interface SendEmailParams {
   test?: boolean;
 }
 
-export const gmailUtils = {
-  async testGmailTokens(tokens: GmailTokens): Promise<boolean> {
-    try {
-      // Try a less privileged endpoint first as a fallback
-      const profileEndpoint = "https://www.googleapis.com/oauth2/v2/userinfo";
+export async function testGmailTokens(tokens: GmailTokens): Promise<boolean> {
+  try {
+    // Try a less privileged endpoint first as a fallback
+    const profileEndpoint = "https://www.googleapis.com/oauth2/v2/userinfo";
 
-      // Make a simple API call to verify the tokens
-      const response = await fetch(profileEndpoint, {
-        headers: {
-          Authorization: `Bearer ${tokens.access_token}`,
-        },
-      });
+    // Make a simple API call to verify the tokens
+    const response = await fetch(profileEndpoint, {
+      headers: {
+        Authorization: `Bearer ${tokens.access_token}`,
+      },
+    });
 
-      if (!response.ok) {
-        const error = await response.json();
-        console.error("Gmail token test failed:", error);
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      console.error("Error testing Gmail tokens:", error);
+    if (!response.ok) {
+      const error = await response.json();
+      console.error("Gmail token test failed:", error);
       return false;
     }
-  },
 
-  async saveGmailConnection(
-    workspaceId: string,
-    userId: string,
-    email: string,
-    name: string,
-    tokens: GmailTokens,
-  ) {
-    try {
-      // Validate tokens
-      if (!tokens.access_token || !tokens.refresh_token) {
-        console.error("Invalid tokens provided:", tokens);
-        throw new Error("Invalid Gmail tokens provided");
-      }
+    return true;
+  } catch (error) {
+    console.error("Error testing Gmail tokens:", error);
+    return false;
+  }
+}
 
-      // Check if tokens are expired
-      if (tokens.expires_in && Date.now() >= tokens.expires_in) {
-        console.warn("Tokens are already expired, but proceeding with save");
-      }
+export async function saveGmailConnection({
+  workspaceId,
+  email,
+  name,
+  tokens,
+}: {
+  workspaceId: string;
+  email: string;
+  name: string;
+  tokens: GmailTokens;
+}) {
+  console.log("Saving Gmail connection:", workspaceId, email, name, tokens);
+  const user = await requireAuth();
 
-      // Test the tokens to ensure they're valid
-      const tokensValid = await this.testGmailTokens(tokens);
-      if (!tokensValid) {
-        console.error("Gmail tokens validation failed");
-        throw new Error(
-          "Gmail tokens validation failed. Please try reconnecting your Gmail account.",
-        );
-      }
-
-      const connectionData = {
-        email,
-        name,
-        tokens,
-        workspaceId,
-        userId,
-        connected_at: Date.now(),
-        isActive: true,
-      };
-
-      // Check if connection already exists
-      const existingConnections = await this.getWorkspaceConnections(workspaceId);
-
-      const existing = existingConnections.find((conn) => conn.email === email);
-
-      let connectionId: string;
-
-      if (existing && existing.id) {
-        const connectionRef = doc(db, "gmail_connections", existing.id);
-        await setDoc(connectionRef, connectionData, { merge: true });
-        connectionId = existing.id;
-      } else {
-        const connectionRef = doc(collection(db, "gmail_connections"));
-        await setDoc(connectionRef, connectionData);
-        connectionId = connectionRef.id;
-      }
-
-      // Update user remaining connected gmail accounts
-      const userRef = doc(db, "users", userId);
-      await setDoc(
-        userRef,
-        {
-          remainingConnectedGmailAccounts: increment(-1),
-        },
-        { merge: true },
-      );
-
-      // Verify the connection was saved
-      await this.getConnection(connectionId);
-
-      return connectionId;
-    } catch (error) {
-      console.error("Error in saveGmailConnection:", error);
-      throw error;
+  try {
+    // Validate tokens
+    if (!tokens.access_token || !tokens.refresh_token) {
+      return { error: "Invalid Gmail tokens provided" };
     }
-  },
 
-  async getWorkspaceConnections(workspaceId: string) {
-    try {
-      const connectionsRef = collection(db, "gmail_connections");
-      const q = query(connectionsRef, where("workspaceId", "==", workspaceId));
-      const snapshot = await getDocs(q);
+    const connectionData = {
+      email,
+      name,
+      tokens,
+      workspaceId,
+      userId: user.id,
+      connected_at: Date.now(),
+      isActive: true,
+    };
 
-      const connections = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as GmailConnection[];
+    const connectionRef = await adminDb.collection("gmail_connections").doc();
+    await connectionRef.set(connectionData);
 
-      return connections;
-    } catch (error) {
-      console.error("Error in getWorkspaceConnections:", error);
-      throw error;
+    // Update user remaining connected gmail accounts
+    const userRef = adminDb.collection("users").doc(user.id);
+    await userRef.update({
+      "usage.connectedGmailAccounts": FieldValue.increment(1),
+    });
+
+    return { success: "Gmail connection saved successfully", connectionId: connectionRef.id };
+  } catch (error) {
+    console.error("Error in saveGmailConnection:", error);
+    return { error: "An error occurred while saving Gmail connection" };
+  }
+}
+
+export async function getWorkspaceConnections({ workspaceId }: { workspaceId: string }) {
+  const user = await requireAuth();
+
+  try {
+    const connectionsRef = adminDb.collection("gmail_connections");
+    const q = connectionsRef.where("workspaceId", "==", workspaceId).where("userId", "==", user.id);
+    const snapshot = await q.get();
+
+    const connections = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as GmailConnection[];
+
+    return { success: "Connections retrieved successfully", connections };
+  } catch (error) {
+    console.error("Error in getWorkspaceConnections:", error);
+    return { error: "An error occurred while retrieving Gmail connections" };
+  }
+}
+
+export async function removeConnection({ connectionId }: { connectionId: string }) {
+  const user = await requireAuth();
+
+  try {
+    const connectionRef = adminDb.collection("gmail_connections").doc(connectionId);
+    const connection = await connectionRef.get();
+
+    if (!connection.exists) {
+      return { error: "Connection not found" };
     }
-  },
 
-  async removeConnection(connectionId: string) {
-    await deleteDoc(doc(db, "gmail_connections", connectionId));
-  },
+    const connectionData = connection.data() as GmailConnection;
 
-  async refreshTokenIfNeeded(connectionId: string) {
-    const connectionRef = doc(db, "gmail_connections", connectionId);
-    const connection = await getDoc(connectionRef);
+    // Check if user has permission to remove this connection
+    if (connectionData.userId !== user.id) {
+      return { error: "You don't have permission to remove this connection" };
+    }
 
-    if (!connection.exists()) {
-      console.error("Gmail connection not found:", connectionId);
-      throw new Error("Gmail connection not found");
+    await connectionRef.delete();
+
+    // Increment the user's remaining connected gmail accounts
+    const userRef = adminDb.collection("users").doc(user.id);
+    await userRef.update({
+      remainingConnectedGmailAccounts: FieldValue.increment(1),
+    });
+
+    return { success: "Connection removed successfully" };
+  } catch (error) {
+    console.error("Error removing connection:", error);
+    return { error: "An error occurred while removing the connection" };
+  }
+}
+
+export async function refreshTokenIfNeeded({ connectionId }: { connectionId: string }) {
+  const user = await requireAuth();
+
+  try {
+    const connectionRef = adminDb.collection("gmail_connections").doc(connectionId);
+    const connection = await connectionRef.get();
+
+    if (!connection.exists) {
+      return { error: "Gmail connection not found" };
     }
 
     const data = connection.data() as GmailConnection;
     const expiryDate = data.tokens.expires_in;
 
     // If token expires in less than 5 minutes, refresh it
-    if (expiryDate < 5 * 60) {
+    if (expiryDate < Date.now() + 5 * 60 * 1000) {
       try {
-        // Log client ID (without the full secret) for debugging
-        const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-
-        if (!clientId || !process.env.GOOGLE_CLIENT_SECRET) {
-          console.error("Missing Google OAuth credentials");
-          throw new Error("Google OAuth credentials are not properly configured");
-        }
-
         const response = await fetch("https://oauth2.googleapis.com/token", {
           method: "POST",
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",
           },
           body: new URLSearchParams({
-            client_id: clientId,
-            client_secret: process.env.GOOGLE_CLIENT_SECRET,
+            client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
+            client_secret: process.env.GOOGLE_CLIENT_SECRET!,
             refresh_token: data.tokens.refresh_token,
             grant_type: "refresh_token",
           }),
@@ -211,261 +199,262 @@ export const gmailUtils = {
             );
             // Instead of marking as inactive, try to use the existing token if it's not expired
             if (Date.now() < expiryDate) {
-              return data.tokens.access_token;
+              return { accessToken: data.tokens.access_token };
             }
-            throw new Error("Google OAuth configuration is invalid. Please contact support.");
+            return { error: "Google OAuth configuration is invalid. Please contact support." };
           } else if (newTokens.error === "invalid_grant") {
             console.error("Invalid grant. The refresh token may have been revoked.");
             // Instead of marking as inactive, try to use the existing token if it's not expired
             if (Date.now() < expiryDate) {
-              return data.tokens.access_token;
+              return { accessToken: data.tokens.access_token };
             }
-            throw new Error(
-              "Gmail authorization has expired. Please reconnect your Gmail account.",
-            );
+            return {
+              error: "Gmail authorization has expired. Please reconnect your Gmail account.",
+            };
           }
 
           // For other errors, try to use the existing token if it's not expired
           if (Date.now() < expiryDate) {
-            return data.tokens.access_token;
+            return { accessToken: data.tokens.access_token };
           }
 
-          throw new Error(`Failed to refresh token: ${newTokens.error || "Unknown error"}`);
+          return { error: `Failed to refresh token: ${newTokens.error || "Unknown error"}` };
         }
 
         // Update tokens in database
-        await setDoc(
-          connectionRef,
-          {
-            tokens: {
-              ...data.tokens,
-              access_token: newTokens.access_token,
-              expires_in: Date.now() + newTokens.expires_in * 1000,
-            },
-            isActive: true, // Ensure connection is marked as active
+        await connectionRef.update({
+          tokens: {
+            ...data.tokens,
+            access_token: newTokens.access_token,
+            expires_in: Date.now() + newTokens.expires_in * 1000,
           },
-          { merge: true },
-        );
+          isActive: true, // Ensure connection is marked as active
+        });
 
-        return newTokens.access_token;
+        return { accessToken: newTokens.access_token };
       } catch (error) {
         console.error("Error refreshing token:", error);
 
         // Try to use the existing token if it's not expired
-        if (expiryDate > 0) {
-          return data.tokens.access_token;
+        if (Date.now() < expiryDate) {
+          return { accessToken: data.tokens.access_token };
         }
 
         // Only mark as inactive if we can't use the existing token
         try {
-          await setDoc(
-            connectionRef,
-            {
-              isActive: false,
-            },
-            { merge: true },
-          );
+          await connectionRef.update({
+            isActive: false,
+          });
         } catch (updateError) {
           console.error("Failed to mark connection as inactive:", updateError);
         }
 
-        throw new Error(`Gmail authorization has expired. Please reconnect your Gmail account.`);
+        return { error: "Gmail authorization has expired. Please reconnect your Gmail account." };
       }
     }
 
-    return data.tokens.access_token;
-  },
+    return { accessToken: data.tokens.access_token };
+  } catch (error) {
+    console.error("Error in refreshTokenIfNeeded:", error);
+    return { error: "An error occurred while refreshing the token" };
+  }
+}
 
-  async sendEmail({ workspaceId, connectionId, to, subject, body, test }: SendEmailParams) {
-    try {
-      // Get the connection details
-      const connection = await this.getConnectionById(connectionId);
-      if (!connection) {
-        const connections = await this.getWorkspaceConnections(workspaceId);
-        const availableEmails = connections.map((c) => c.email).join(", ");
-        throw new Error(
-          `No Gmail connection found for ID: ${connectionId}. Available connections: ${availableEmails}`,
-        );
-      }
+export async function sendEmail({
+  workspaceId,
+  connectionId,
+  to,
+  subject,
+  body,
+  test,
+}: SendEmailParams) {
+  const user = await requireAuth();
 
-      // Check if the connection is inactive and try to reactivate it
-      if (connection.isActive === false) {
-        // Check if the token is still valid
-        if (connection.tokens.expires_in > 0) {
-          // Try to reactivate the connection
-          const connectionRef = doc(db, "gmail_connections", connectionId);
-          await setDoc(
-            connectionRef,
-            {
-              isActive: true,
-            },
-            { merge: true },
-          );
-        } else {
-          // Try to refresh the token
-          try {
-            await this.refreshTokenIfNeeded(connectionId);
-          } catch (refreshError) {
-            console.error("Failed to refresh token:", refreshError);
-            throw new Error(
-              `Gmail connection for ${connection.email} is inactive. Please reconnect your Gmail account.`,
-            );
-          }
-        }
-      }
+  try {
+    // Get the connection details
+    const connectionResult = await getConnectionById({ connectionId });
+    if (connectionResult.error) {
+      return {
+        error: `No Gmail connection found for ID: ${connectionId}.`,
+      };
+    }
 
-      // Type assertion to ensure TypeScript knows connection has all GmailConnection properties
-      const connectionDetails: GmailConnection = connection;
+    const connection = connectionResult.connection;
 
-      // Get fresh access token
-      const accessToken = await this.refreshTokenIfNeeded(connectionId);
+    // // Check if the connection is inactive and try to reactivate it
+    // if (connection?.isActive === false) {
+    //   // Check if the token is still valid
+    //   if (connection?.tokens.expires_in > Date.now()) {
+    //     // Try to reactivate the connection
+    //     const connectionRef = adminDb.collection("gmail_connections").doc(connectionId);
+    //     await connectionRef.update({
+    //       isActive: true,
+    //     });
+    //   } else {
+    //     // Try to refresh the token
+    //     const refreshResult = await refreshTokenIfNeeded({ connectionId });
+    //     if (refreshResult.error) {
+    //       return {
+    //         error: `Gmail connection for ${connection?.email} is inactive. Please reconnect your Gmail account.`,
+    //       };
+    //     }
+    //   }
+    // }
 
-      // Construct the email in RFC 822 format with proper From header
-      const emailContent = [
-        'Content-Type: text/html; charset="UTF-8"',
-        "MIME-Version: 1.0",
-        `To: ${to}`,
-        `From: "${connectionDetails.name}" <${connectionDetails.email}>`,
-        `Subject: ${subject}`,
-        "",
-        body,
-      ].join("\r\n");
+    // // Get fresh access token
+    // const refreshResult = await refreshTokenIfNeeded({ connectionId });
+    // if (refreshResult.error) {
+    //   return { error: refreshResult.error };
+    // }
+    // const accessToken = refreshResult.accessToken;
 
-      // Encode the email content
-      const encodedEmail = encode(emailContent)
-        .replace(/\+/g, "-")
-        .replace(/\//g, "_")
-        .replace(/=+$/, "");
+    // Construct the email in RFC 822 format with proper From header
+    const emailContent = [
+      'Content-Type: text/html; charset="UTF-8"',
+      "MIME-Version: 1.0",
+      `To: ${to}`,
+      `From: "${connection?.name}" <${connection?.email}>`,
+      `Subject: ${subject}`,
+      "",
+      body,
+    ].join("\r\n");
 
-      // Send the email via Gmail API
-      const response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-          "X-Goog-AuthUser": "0",
-        },
-        body: JSON.stringify({
-          raw: encodedEmail,
-        }),
+    // Encode the email content
+    const encodedEmail = encode(emailContent)
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+
+    // Send the email via Gmail API
+    const response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${connection?.tokens.access_token}`,
+        "Content-Type": "application/json",
+        "X-Goog-AuthUser": "0",
+      },
+      body: JSON.stringify({
+        raw: encodedEmail,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error("Failed to send email:", error);
+      return { error: "Failed to send email" };
+    }
+
+    if (!test) {
+      // Update user email sent number
+      const userRef = adminDb.collection("users").doc(user.id);
+      await userRef.update({
+        remainingEmailSent: FieldValue.increment(-1),
       });
-
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`Failed to send email: ${error}`);
-      }
-
-      if (!test) {
-        // Update user email sent number
-        const userId = auth.currentUser?.uid;
-        if (!userId) {
-          throw new Error("User is anuthenticated");
-        }
-
-        const userRef = doc(db, "users", userId);
-        await setDoc(
-          userRef,
-          {
-            remainingEmailSent: increment(-1),
-          },
-          { merge: true },
-        );
-      }
-
-      const result = await response.json();
-
-      return result;
-    } catch (error) {
-      console.error("Error sending email:", error);
-      throw error;
     }
-  },
 
-  async testEmailConnection({
-    connectionId,
-    workspaceId,
-  }: {
-    connectionId: string;
-    workspaceId: string;
-  }) {
-    try {
-      const connection = await this.getConnection(connectionId);
-      if (!connection) {
-        throw new Error("Connection not found");
-      }
+    return { success: "Email sent successfully" };
+  } catch (error) {
+    console.error("Error sending email:", error);
+    return { error: "An error occurred while sending the email" };
+  }
+}
 
-      // Check if the connection is inactive and try to reactivate it
-      if (connection.isActive === false) {
-        // Check if the token is still valid
+export async function testEmailConnection({
+  connectionId,
+  workspaceId,
+}: {
+  connectionId: string;
+  workspaceId: string;
+}) {
+  const user = await requireAuth();
 
-        if (connection.tokens.expires_in > 0) {
-          // Try to reactivate the connection
-          const connectionRef = doc(db, "gmail_connections", connectionId);
-          await setDoc(
-            connectionRef,
-            {
-              isActive: true,
-            },
-            { merge: true },
-          );
-        } else {
-          // Try to refresh the token
-          try {
-            await this.refreshTokenIfNeeded(connectionId);
-          } catch (refreshError) {
-            console.error("Failed to refresh token:", refreshError);
-            throw new Error("Gmail connection is inactive. Please reconnect your Gmail account.");
-          }
-        }
-      }
+  try {
+    const connectionResult = await getConnectionById({ connectionId });
+    if (connectionResult.error) {
+      return { error: connectionResult.error };
+    }
 
-      // Send a test email
-      await this.sendEmail({
-        connectionId,
-        workspaceId,
-        to: connection.email,
-        subject: "Welcome Agent - Test Connection",
-        body: `
+    const connection = connectionResult.connection;
+
+    // // Check if the connection is inactive and try to reactivate it
+    // if (connection?.isActive === false) {
+    //   // Check if the token is still valid
+    //   if (connection?.tokens.expires_in > Date.now()) {
+    //     // Try to reactivate the connection
+    //     const connectionRef = adminDb.collection("gmail_connections").doc(connectionId);
+    //     await connectionRef.update({
+    //       isActive: true,
+    //     });
+    //   } else {
+    //     // Try to refresh the token
+    //     const refreshResult = await refreshTokenIfNeeded({ connectionId });
+    //     if (refreshResult.error) {
+    //       return { error: "Gmail connection is inactive. Please reconnect your Gmail account." };
+    //     }
+    //   }
+    // }
+
+    // Send a test email
+    const emailResult = await sendEmail({
+      connectionId,
+      workspaceId,
+      to: connection?.email!,
+      subject: "Welcome Agent - Test Connection",
+      body: `
         <p>This is a test email from your Welcome Agent.</p>
         <p>If you're receiving this, your email connection is working correctly!</p>
         <p>You can now start using this email account to send welcome emails to your new signups.</p>
         `,
-        test: true,
-      });
+      test: true,
+    });
 
-      return true;
-    } catch (error) {
-      console.error("Test email failed:", error);
-      throw error;
+    if (emailResult.error) {
+      return { error: emailResult.error };
     }
-  },
 
-  async getConnection(connectionId: string) {
-    const connectionRef = doc(db, "gmail_connections", connectionId);
-    const connection = await getDoc(connectionRef);
+    return { success: "Test email sent successfully" };
+  } catch (error) {
+    return { error: "An error occurred while testing the email connection" };
+  }
+}
 
-    if (!connection.exists()) {
-      return null;
+export async function getConnection({ connectionId }: { connectionId: string }) {
+  const user = await requireAuth();
+
+  try {
+    const connectionRef = adminDb.collection("gmail_connections").doc(connectionId);
+    const connection = await connectionRef.get();
+
+    if (!connection.exists) {
+      return { error: "Connection not found" };
     }
 
     const data = connection.data() as GmailConnection;
     return {
-      ...data,
-      id: connection.id,
-      // Ensure isActive is a boolean
-      isActive: data.isActive !== false,
-    } as GmailConnection;
-  },
+      success: "Connection retrieved successfully",
+      connection: {
+        ...data,
+        id: connection.id,
+        // Ensure isActive is a boolean
+        isActive: data.isActive !== false,
+      } as GmailConnection,
+    };
+  } catch (error) {
+    console.error("Error getting connection:", error);
+    return { error: "An error occurred while retrieving the connection" };
+  }
+}
 
-  async getConnectionByEmail(email: string): Promise<GmailConnection | null> {
-    const connectionsRef = collection(db, "gmail_connections");
+export async function getConnectionByEmail({ email }: { email: string }) {
+  const user = await requireAuth();
 
-    // Add isActive field if it doesn't exist in the query
-    const q = query(connectionsRef, where("email", "==", email));
-    const snapshot = await getDocs(q);
+  try {
+    const connectionsRef = adminDb.collection("gmail_connections");
+    const q = connectionsRef.where("email", "==", email);
+    const snapshot = await q.get();
 
     if (snapshot.empty) {
-      return null;
+      return { error: "No connection found for this email" };
     }
 
     const connection = {
@@ -473,108 +462,120 @@ export const gmailUtils = {
       ...snapshot.docs[0].data(),
     } as GmailConnection;
 
-    return connection;
-  },
+    return { success: "Connection retrieved successfully", connection };
+  } catch (error) {
+    console.error("Error getting connection by email:", error);
+    return { error: "An error occurred while retrieving the connection" };
+  }
+}
 
-  async getConnectionById(connectionId: string): Promise<GmailConnection | null> {
-    const connectionRef = doc(db, "gmail_connections", connectionId);
-    const snapshot = await getDoc(connectionRef);
-    if (!snapshot.exists()) return null;
+export async function getConnectionById({ connectionId }: { connectionId: string }) {
+  const user = await requireAuth();
+
+  try {
+    const connectionRef = adminDb.collection("gmail_connections").doc(connectionId);
+    const snapshot = await connectionRef.get();
+
+    if (!snapshot.exists) {
+      return { error: "Connection not found" };
+    }
 
     const data = snapshot.data() as GmailConnection;
     return {
-      ...data,
-      id: snapshot.id,
-      // Ensure isActive is a boolean
-      isActive: data.isActive !== false,
-    } as GmailConnection;
-  },
+      success: "Connection retrieved successfully",
+      connection: {
+        ...data,
+        id: snapshot.id,
+        // Ensure isActive is a boolean
+        isActive: data.isActive !== false,
+      } as GmailConnection,
+    };
+  } catch (error) {
+    console.error("Error getting connection by ID:", error);
+    return { error: "An error occurred while retrieving the connection" };
+  }
+}
 
-  async reactivateConnection(connectionId: string, tokens: GmailTokens) {
-    const connectionRef = doc(db, "gmail_connections", connectionId);
+export async function reactivateConnection({
+  connectionId,
+  tokens,
+}: {
+  connectionId: string;
+  tokens: GmailTokens;
+}) {
+  const user = await requireAuth();
+
+  try {
+    const connectionRef = adminDb.collection("gmail_connections").doc(connectionId);
 
     // Get current connection data
-    const connection = await this.getConnectionById(connectionId);
-    if (!connection) {
-      throw new Error("Connection not found");
+    const connectionResult = await getConnectionById({ connectionId });
+    if (connectionResult.error) {
+      return { error: connectionResult.error };
     }
 
     // Update connection with new tokens and mark as active
-    await setDoc(
-      connectionRef,
-      {
-        tokens,
-        isActive: true,
-      },
-      { merge: true },
-    );
+    await connectionRef.update({
+      tokens,
+      isActive: true,
+    });
 
-    return true;
-  },
+    return { success: "Connection reactivated successfully" };
+  } catch (error) {
+    console.error("Error reactivating connection:", error);
+    return { error: "An error occurred while reactivating the connection" };
+  }
+}
 
-  async checkAndFixInactiveConnections(workspaceId: string) {
-    try {
-      // Get all connections for the workspace
-      const connections = await this.getWorkspaceConnections(workspaceId);
+export async function checkAndFixInactiveConnections({ workspaceId }: { workspaceId: string }) {
+  const user = await requireAuth();
 
-      // Filter for inactive connections
-      const inactiveConnections = connections.filter((conn) => conn.isActive === false);
-
-      // Try to reactivate each inactive connection
-      for (const connection of inactiveConnections) {
-        try {
-          // Check if the token is still valid
-          if (connection.tokens.expires_in > 0) {
-            // Reactivate the connection
-            const connectionRef = doc(db, "gmail_connections", connection.id);
-            await setDoc(
-              connectionRef,
-              {
-                isActive: true,
-              },
-              { merge: true },
-            );
-          } else {
-            // Try to refresh the token
-
-            await this.refreshTokenIfNeeded(connection.id);
-          }
-        } catch (error) {
-          console.error(`Failed to reactivate connection for ${connection.email}:`, error);
-          // Continue with other connections
-        }
-      }
-
-      return {
-        total: connections.length,
-        inactive: inactiveConnections.length,
-        fixed: inactiveConnections.length, // We tried to fix all inactive connections
-      };
-    } catch (error) {
-      console.error("Error checking and fixing inactive connections:", error);
-      throw error;
+  try {
+    const connectionsResult = await getWorkspaceConnections({ workspaceId });
+    if (connectionsResult.error) {
+      return { error: connectionsResult.error };
     }
-  },
 
-  // Client-side function to periodically check and fix inactive connections
-  startPeriodicConnectionCheck(workspaceId: string, intervalMinutes = 60) {
-    // Check immediately
-    this.checkAndFixInactiveConnections(workspaceId)
-      .then((result) => {})
-      .catch((error) => {
-        console.error("Error in initial connection check:", error);
-      });
+    const connections = connectionsResult.connections;
 
-    // Set up interval for periodic checks
-    const intervalId = setInterval(() => {
-      this.checkAndFixInactiveConnections(workspaceId)
-        .then((result) => {})
-        .catch((error) => {
-          console.error("Error in periodic connection check:", error);
-        });
-    }, intervalMinutes * 60 * 1000);
+    // Filter for inactive connections
+    const inactiveConnections = connections?.filter((conn) => conn.isActive === false) || [];
+    let fixedCount = 0;
 
-    // Return the interval ID so it can be cleared if needed
-    return intervalId;
-  },
-};
+    // Try to reactivate each inactive connection
+    for (const connection of inactiveConnections) {
+      try {
+        // Check if the token is still valid
+        if (connection.tokens.expires_in > Date.now()) {
+          // Reactivate the connection
+          const connectionRef = adminDb.collection("gmail_connections").doc(connection.id);
+          await connectionRef.update({
+            isActive: true,
+          });
+          fixedCount++;
+        } else {
+          // Try to refresh the token
+          const refreshResult = await refreshTokenIfNeeded({ connectionId: connection.id });
+          if (!refreshResult.error) {
+            fixedCount++;
+          }
+        }
+      } catch (error) {
+        console.error(`Failed to reactivate connection for ${connection.email}:`, error);
+        // Continue with other connections
+      }
+    }
+
+    return {
+      success: "Checked and fixed inactive connections",
+      stats: {
+        total: connections?.length || 0,
+        inactive: inactiveConnections.length,
+        fixed: fixedCount,
+      },
+    };
+  } catch (error) {
+    console.error("Error checking and fixing inactive connections:", error);
+    return { error: "An error occurred while checking and fixing inactive connections" };
+  }
+}

@@ -3,15 +3,10 @@
 import { useState } from "react";
 import { Loader2, Mail, Trash2, X, Pencil, Save } from "lucide-react";
 import { toast } from "sonner";
-import { userUtils } from "@/firebase/user-utils";
 import type { Workspace } from "@/types/workspace";
-import { useWorkspace } from "@/hooks/useWorkspace";
-import { useAuth } from "@/hooks/useAuth";
-import {
-  deleteWorkspace,
-  inviteUserToWorkspace,
-  updateWorkspaceName,
-} from "@/firebase/workspace-utils";
+import { useWorkspace } from "@/hooks/use-workspace";
+import { useAuth } from "@/hooks/use-auth";
+import { deleteWorkspace, updateWorkspaceName } from "@/firebase/workspace-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -29,11 +24,9 @@ export function WorkspaceSettings({
   showSettingsDialog,
   setShowSettingsDialog,
 }: WorkspaceSettingsProps) {
-  const { workspaces, refreshWorkspaces, setWorkspace } = useWorkspace();
+  const { workspaces, setWorkspace, setWorkspaces } = useWorkspace();
   const { user, setUser } = useAuth();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [isInviting, setIsInviting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -43,139 +36,61 @@ export function WorkspaceSettings({
   const isLastWorkspace = workspaces.length === 1;
 
   const handleNameSave = async () => {
-    if (!user || !newName.trim() || newName === workspace.name) {
-      setIsEditing(false);
-      setNewName(workspace.name);
-      return;
-    }
-
-    // Check for duplicate names
-    const existingWorkspace = workspaces.find(
-      (w) => w.id !== workspace.id && w.name.toLowerCase() === newName.trim().toLowerCase(),
-    );
-
-    if (existingWorkspace) {
-      toast.error("Error", {
-        description: "A workspace with this name already exists",
-      });
-      return;
-    }
+    if (!user) return;
 
     setIsSaving(true);
-    try {
-      if (!user) {
-        toast.error("Error", {
-          description: "You must be logged in to update workspace name",
-        });
-        return;
-      }
+    const { success, error } = await updateWorkspaceName({
+      workspaceId: workspace.id,
+      newName: newName,
+    });
 
-      const success = await updateWorkspaceName(workspace.id, newName.trim(), user.uid);
-
-      if (!success) {
-        toast.error("Access Denied", {
-          description: "You don't have permission to update this workspace name",
-        });
-        setIsEditing(false);
-        setNewName(workspace.name);
-        return;
-      }
-
-      await refreshWorkspaces();
-
-      // Update the current workspace with the new name
-      setWorkspace({
+    if (error) {
+      toast.error("Error", {
+        description: error,
+      });
+      setIsEditing(false);
+      setNewName(workspace.name);
+    } else if (success) {
+      const updatedWorkspace = {
         id: workspace.id,
         name: newName.trim(),
         createdAt: workspace.createdAt,
         ownerId: workspace.ownerId,
-        members: workspace.members || [],
-      });
-
+        members: workspace.members,
+      };
+      setWorkspace(updatedWorkspace);
+      setWorkspaces(workspaces.map((w) => (w.id === workspace.id ? updatedWorkspace : w)));
       setIsEditing(false);
       toast.success("Success", {
-        description: "Workspace name updated successfully",
+        description: success,
       });
-    } catch (err) {
-      toast.error("Error", {
-        description: "Failed to update workspace name",
-      });
-    } finally {
-      setIsSaving(false);
     }
-  };
-
-  const handleInviteUser = async () => {
-    if (!user || !inviteEmail.trim()) return;
-
-    setIsInviting(true);
-    setError(null);
-    try {
-      const result = await inviteUserToWorkspace(workspace.id, inviteEmail, user.uid);
-
-      if (!result) {
-        toast.error("Access Denied", {
-          description: "You don't have permission to invite users to this workspace",
-        });
-        return;
-      }
-
-      setInviteEmail("");
-      toast.success("Success", {
-        description: "Invitation sent successfully",
-      });
-    } catch (err) {
-      setError("Failed to send invite. Please try again.");
-      toast.error("Error", {
-        description: "Failed to send invitation",
-      });
-    } finally {
-      setIsInviting(false);
-    }
+    setIsSaving(false);
   };
 
   const handleDelete = async () => {
     if (!user) return;
 
-    if (isLastWorkspace) {
-      toast.error("Cannot Delete Workspace", {
-        description: "You must have at least one workspace.",
-      });
-      return;
-    }
-
     setIsDeleting(true);
-    try {
-      const success = await deleteWorkspace(workspace.id);
+    const { success, error } = await deleteWorkspace({
+      workspaceId: workspace.id,
+    });
 
-      if (!success) {
-        toast.error("Access Denied", {
-          description: "You don't have permission to delete this workspace",
-        });
-        setIsDeleting(false);
-        return;
-      }
-
-      setShowSettingsDialog(false);
-
-      setUser({
-        ...user,
-        remainingWorkspaces: user.remainingWorkspaces + 1,
-      });
-
-      await refreshWorkspaces();
-
-      toast.success("Success", {
-        description: "Workspace deleted successfully",
-      });
-    } catch (err) {
+    if (error) {
       toast.error("Error", {
-        description: "Failed to delete workspace",
+        description: error,
       });
-      setError("Failed to delete workspace. Please try again.");
-    } finally {
-      setIsDeleting(false);
+    } else if (success) {
+      setShowSettingsDialog(false);
+      const filteredWorkspaces = workspaces.filter((w) => w.id !== workspace.id);
+      setWorkspaces(filteredWorkspaces);
+      setWorkspace(filteredWorkspaces[0]);
+      toast.success("Success", {
+        description: success,
+      });
+      setUser({ ...user, usage: { ...user.usage, workspaces: user.usage.workspaces - 1 } });
     }
+    setIsDeleting(false);
   };
 
   return (
@@ -253,7 +168,7 @@ export function WorkspaceSettings({
                   <span className='font-medium'>{workspace.name}</span>? This action cannot be
                   undone.
                 </p>
-                <div className='flex gap-2'>
+                <div className='flex gap-2 justify-end'>
                   <Button variant='outline' onClick={() => setShowDeleteConfirm(false)}>
                     Cancel
                   </Button>
