@@ -14,13 +14,11 @@ import {
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 export default function SignIn() {
-  const { signInWithGoogle, loading, user } = useAuth();
+  const { signInWithGoogle } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [isSigningIn, setIsSigningIn] = useState(false);
-  const router = useRouter();
 
   const handleSignIn = async () => {
     try {
@@ -34,12 +32,6 @@ export default function SignIn() {
       setIsSigningIn(false);
     }
   };
-
-  // useEffect(() => {
-  //   if (user) {
-  //     router.push("/dashboard");
-  //   }
-  // }, [user]);
 
   return (
     <div className='min-h-screen flex items-center justify-center bg-background'>
@@ -64,7 +56,7 @@ export default function SignIn() {
           <Button
             size='lg'
             onClick={handleSignIn}
-            disabled={isSigningIn || loading}
+            disabled={isSigningIn}
             variant='outline'
             className='w-full flex items-center justify-center gap-3'
           >
