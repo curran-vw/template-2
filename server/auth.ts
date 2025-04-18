@@ -6,6 +6,8 @@ import { User } from "@/lib/types";
 import { redirect } from "next/navigation";
 import { Workspace } from "@/types/workspace";
 import { WelcomeAgent } from "@/types/welcome-agent";
+import { PLANS } from "@/plans/plans";
+
 // Create session after successful authentication
 export async function createSessionCookie(idToken: string) {
   try {
@@ -65,10 +67,10 @@ export async function getAuthenticatedUser() {
           workspaces: 0,
         },
         limits: {
-          emailSent: 1000,
-          agents: 1,
-          connectedGmailAccounts: 1,
-          workspaces: 1,
+          emailSent: PLANS.free.limits.emailSent,
+          agents: PLANS.free.limits.agents,
+          connectedGmailAccounts: PLANS.free.limits.connectedGmailAccounts,
+          workspaces: PLANS.free.limits.workspaces,
         },
         stripeCustomerId: null,
         createdAt: new Date().toISOString(),
@@ -86,30 +88,6 @@ export async function getAuthenticatedUser() {
     } else {
       user = userDoc.data();
     }
-
-    // // Get user's workspaces
-    // const workspacesSnapshot = await adminDb
-    //   .collection("workspaces")
-    //   .where("members", "array-contains", userId)
-    //   .get();
-
-    // const workspaces = workspacesSnapshot.docs.map((doc) => ({
-    //   id: doc.id,
-    //   ...doc.data(),
-    // }));
-
-    // // Get workspace agents
-    // const activeWorkspaceId = await getActiveWorkspaceCookie();
-
-    // const agentsSnapshot = await adminDb
-    //   .collection("welcomeAgents")
-    //   .where("workspaceId", "==", activeWorkspaceId || workspaces[0].id)
-    //   .get();
-
-    // const agents = agentsSnapshot.docs.map((doc) => ({
-    //   id: doc.id,
-    //   ...doc.data(),
-    // }));
 
     return {
       user: {

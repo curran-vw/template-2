@@ -3,7 +3,7 @@
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import { CUSTOMER_PORTAL_LINK } from "@/types/plans";
+import { CUSTOMER_PORTAL_LINK } from "@/plans/plans";
 import Link from "next/link";
 
 export default function Subscribe({ tier, url }: { tier: "pro" | "scale"; url: string }) {
@@ -25,7 +25,7 @@ export default function Subscribe({ tier, url }: { tier: "pro" | "scale"; url: s
   }
 
   return (
-    <Button className='w-full' variant={isSubscribed ? "default" : "outline"} asChild>
+    <Button className='w-full' variant={tier === "pro" ? "default" : "outline"} asChild>
       {loading ? (
         <span>
           <LoadingSpinner />

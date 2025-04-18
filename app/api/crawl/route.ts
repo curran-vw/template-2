@@ -20,7 +20,6 @@ export async function POST(req: Request) {
     try {
       new URL(url);
     } catch (e) {
-      console.error("Invalid URL:", e);
       await addLog({
         type: "crawl",
         status: "failed",
@@ -138,7 +137,6 @@ export async function POST(req: Request) {
         workspaceId,
         agentId,
       });
-      console.error("OpenRouter API error:", errorText);
       return NextResponse.json({ error: "Failed to summarize content" }, { status: 500 });
     }
 

@@ -6,8 +6,8 @@ import { onAuthStateChanged } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { User } from "@/lib/types";
 import { createSessionCookie, getAuthenticatedUser } from "@/server/auth";
-import { useWorkspaceContext } from "./workspace-context";
-
+import { getUserWorkspaces } from "@/firebase/workspace-utils";
+import { useWorkspaceContext } from "@/contexts/workspace-context";
 interface AuthContextType {
   user: User | null;
   setUser: (user: User | null) => void;
@@ -18,6 +18,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const { setWorkspaces, handleSetWorkspaces, setWorkspacesLoading } = useWorkspaceContext();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -27,6 +28,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { user } = await getAuthenticatedUser();
         setUser(user);
         setLoading(false);
+
+        const result = await getUserWorkspaces();
+        setWorkspaces(result.workspaces);
+        handleSetWorkspaces(result.workspaces);
+        setWorkspacesLoading(false);
       } else {
         setLoading(false);
         router.push("/sign-in");

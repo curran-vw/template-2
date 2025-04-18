@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import Stripe from "stripe";
 import { adminDb } from "@/lib/firebase-admin";
-import { PLANS } from "@/types/plans";
+import { PLANS } from "@/plans/plans";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -66,6 +66,8 @@ export async function POST(req: Request) {
         };
         userData.stripeCustomerId = customerId;
         await user.docs[0].ref.update(userData);
+
+        console.log("userData", userData);
 
         break;
       }

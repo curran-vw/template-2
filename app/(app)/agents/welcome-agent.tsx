@@ -67,6 +67,7 @@ import { userUtils } from "@/firebase/user-utils";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { PRESET_DIRECTIVES } from "@/lib/constants";
 import { type WelcomeAgent } from "@/types/welcome-agent";
+import { useQuery } from "@tanstack/react-query";
 
 export type EmailGenerationStep = "user-info" | "business-info" | "email-body" | "subject-line";
 
@@ -136,13 +137,13 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
       isActive?: boolean;
     }[]
   >([]);
-  const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
+
   const [isTestingEmail, setIsTestingEmail] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(!agent);
   const [isGenerationDialogOpen, setIsGenerationDialogOpen] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState(true);
   // Track initial values
   const [initialValues, setInitialValues] = useState({
     agentName: agent?.name || "Custom Welcome Agent",
@@ -181,27 +182,27 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
     checkForChanges();
   }, [agentName, directive, selectedDirective, businessInfo, checkForChanges]);
 
-  useEffect(() => {
-    const loadConnectedAccounts = async () => {
-      if (!workspace?.id) return;
+  const { data: connectedAccountsData, refetch: refetchConnectedAccounts } = useQuery({
+    queryKey: ["connectedAccounts", workspace?.id],
+    queryFn: async () => {
       setIsLoadingAccounts(true);
-      const { connections, success, error } = await gmailUtils.getWorkspaceConnections({
-        workspaceId: workspace.id,
+      return await gmailUtils.getWorkspaceConnections({
+        workspaceId: workspace?.id!,
       });
-      if (success) {
-        console.log("connections", connections);
-        setConnectedAccounts(connections);
-      } else {
-        toast.error("Error", {
-          description: error,
-        });
-      }
+    },
+    enabled: !!workspace?.id,
+  });
+
+  useEffect(() => {
+    if (connectedAccountsData?.success) {
+      setConnectedAccounts(connectedAccountsData.connections || []);
       setIsLoadingAccounts(false);
-    };
-    if (workspace?.id) {
-      loadConnectedAccounts();
+    } else if (connectedAccountsData?.error) {
+      toast.error("Error", {
+        description: connectedAccountsData.error,
+      });
     }
-  }, [workspace?.id]);
+  }, [connectedAccountsData]);
 
   const handleNavigateAway = (action: () => void) => {
     if (hasUnsavedChanges) {
@@ -473,7 +474,9 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
   };
 
   const handleSaveAsDraft = async () => {
+    setIsSaving(true);
     await handleSave("draft");
+    setIsSaving(false);
   };
 
   const handleGmailConnected = async (email: string, name: string, tokens: GmailTokens) => {
@@ -915,18 +918,29 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
                               key={account.id}
                               className={cn(
                                 "flex items-center justify-between rounded-lg border p-3",
-                                selectedEmailAccount === account.email &&
-                                  "border-primary/50 bg-muted",
+                                account.isActive && "border-primary/50 bg-muted",
                               )}
                             >
                               <div className='min-w-0 flex-1 flex items-center gap-3'>
                                 <input
-                                  type='radio'
+                                  type='checkbox'
                                   id={account.id}
                                   name='emailAccount'
-                                  checked={selectedEmailAccount === account.email}
-                                  onChange={() => {
-                                    setSelectedEmailAccount(account.email);
+                                  defaultChecked={account.isActive}
+                                  onChange={async () => {
+                                    setIsLoadingAccounts(true);
+                                    const result = await gmailUtils.toggleConnectionStatus({
+                                      connectionId: account.id!,
+                                      isActive: !account.isActive,
+                                    });
+                                    if (result.error) {
+                                      toast.error("Error", { description: result.error });
+                                    } else {
+                                      toast.success("Success", {
+                                        description: "Connection status updated",
+                                      });
+                                      refetchConnectedAccounts();
+                                    }
                                   }}
                                   className='h-4 w-4 border-muted-foreground text-primary'
                                 />
@@ -1053,6 +1067,34 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
                     </div>
                   </div>
                 </CollapsibleCard>
+
+                <div className='flex gap-2 justify-end'>
+                  <Button
+                    className='flex items-center gap-2 px-4 py-2'
+                    onClick={handleSaveAsDraft}
+                    disabled={isSaving}
+                    variant='outline'
+                  >
+                    {isSaving ? (
+                      <LoadingSpinner className='h-4 w-4' />
+                    ) : (
+                      <Save className='h-4 w-4' />
+                    )}
+                    Save as Draft
+                  </Button>
+                  <Button
+                    className='flex items-center gap-2 px-4 py-2'
+                    onClick={handleSaveAndPublish}
+                    disabled={isPublishing}
+                  >
+                    {isPublishing ? (
+                      <LoadingSpinner className='h-4 w-4' />
+                    ) : (
+                      <Save className='h-4 w-4' />
+                    )}
+                    Save & Publish
+                  </Button>
+                </div>
               </div>
             </div>
           </>

@@ -126,7 +126,7 @@ function RobotAnimation() {
 export default function Dashboard() {
   const router = useRouter();
   const { workspace } = useWorkspace();
-  const { user } = useAuth();
+  const { user, loading: userLoading } = useAuth();
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -134,7 +134,7 @@ export default function Dashboard() {
   const { data: dashboardData } = useQuery({
     queryKey: ["dashboard", workspace?.id],
     queryFn: async () => {
-      if (!workspace) return null;
+      if (!workspace || !user) return null;
       setLoading(true);
 
       // Get all emails to get accurate counts
@@ -197,7 +197,7 @@ export default function Dashboard() {
         recentActivity: recentEmails,
       };
     },
-    enabled: !!workspace,
+    enabled: !!workspace && !!user,
   });
 
   useEffect(() => {
@@ -453,7 +453,8 @@ export default function Dashboard() {
           </CardContent>
           {user && (
             <CardFooter className='text-xs text-muted-foreground'>
-              You can create up to 000 more agents on your current plan
+              You can create up to {user.limits.agents - user.usage.agents} more agents on your
+              current plan
             </CardFooter>
           )}
         </Card>

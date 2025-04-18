@@ -58,7 +58,6 @@ export default function LogsPage() {
   const [selectedLog, setSelectedLog] = useState<Log | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [pagination, setPagination] = useState<{
     totalPages: number;
     totalLogs: number;
@@ -72,14 +71,10 @@ export default function LogsPage() {
   });
 
   // Use React Query for logs data fetching
-  const {
-    data: logsData,
-    isLoading,
-    isRefetching,
-    refetch: refetchLogs,
-  } = useQuery({
+  const { data: logsData, refetch: refetchLogs } = useQuery({
     queryKey: ["logs", logType, currentPage],
     queryFn: async () => {
+      setLoading(true);
       return await logsUtils.getLogs({
         page: currentPage,
         pageSize: 10,
@@ -134,6 +129,10 @@ export default function LogsPage() {
     setIsResponseOpen(true);
   };
 
+  if (userLoading) {
+    return <LoadingSpinner />;
+  }
+
   // Check access after all hooks are defined
   if (
     !user ||
@@ -178,9 +177,9 @@ export default function LogsPage() {
                       variant='outline'
                       size='icon'
                       onClick={() => refetchLogs()}
-                      disabled={refreshing}
+                      disabled={loading}
                     >
-                      <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+                      <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
                       <span className='sr-only'>Refresh logs</span>
                     </Button>
                   </TooltipTrigger>

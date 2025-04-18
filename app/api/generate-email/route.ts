@@ -62,17 +62,6 @@ export async function POST(req: Request) {
         });
 
         if (!userInfoResponse.ok) {
-          const errorText = await userInfoResponse.text();
-          console.error("OpenRouter API Error:", {
-            status: userInfoResponse.status,
-            statusText: userInfoResponse.statusText,
-            response: errorText,
-            apiKey: process.env.OPENROUTER_API_KEY ? "API key exists" : "API key is missing",
-            input: {
-              signupInfo: signupInfo ? "exists" : "missing",
-              businessContextPurpose: businessContext?.purpose ? "exists" : "missing",
-            },
-          });
           throw new Error(
             `Failed to get user info: ${userInfoResponse.status} ${userInfoResponse.statusText}`,
           );
@@ -125,13 +114,6 @@ export async function POST(req: Request) {
         });
 
         if (!businessInfoResponse.ok) {
-          const errorText = await businessInfoResponse.text();
-          console.error("OpenRouter API Error (Business Info):", {
-            status: businessInfoResponse.status,
-            statusText: businessInfoResponse.statusText,
-            response: errorText,
-            apiKey: process.env.OPENROUTER_API_KEY ? "API key exists" : "API key is missing",
-          });
           throw new Error(
             `Failed to get business info: ${businessInfoResponse.status} ${businessInfoResponse.statusText}`,
           );
@@ -282,17 +264,6 @@ export async function POST(req: Request) {
       },
     });
   } catch (error) {
-    console.error(
-      "Email generation error:",
-      error instanceof Error
-        ? {
-            message: error.message,
-            stack: error.stack,
-            name: error.name,
-          }
-        : error,
-    );
-
     await addLog({
       type: "api",
       status: "failed",

@@ -10,6 +10,8 @@ export const useWorkspace = () => {
     setAgents,
     agentsLoading,
     workspacesLoading,
+    setWorkspacesLoading,
+    handleSetWorkspaces,
   } = useWorkspaceContext();
   return {
     workspace,
@@ -20,5 +22,7 @@ export const useWorkspace = () => {
     setAgents,
     agentsLoading,
     workspacesLoading,
+    setWorkspacesLoading,
+    handleSetWorkspaces,
   };
 };

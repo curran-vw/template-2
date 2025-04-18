@@ -174,7 +174,7 @@ export function WorkspaceSwitcher() {
           >
             <Plus className='mr-2 h-4 w-4' />
             Create Workspace
-            {user?.limits.workspaces && user?.usage.workspaces && (
+            {!!user?.limits.workspaces && !!user?.usage.workspaces && (
               <Badge variant='outline' className='ml-auto'>
                 {user?.limits.workspaces - user?.usage.workspaces}
               </Badge>

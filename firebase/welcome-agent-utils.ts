@@ -48,7 +48,7 @@ export async function createWelcomeAgent({
     };
 
     // Create the agent document
-    const docRef = await adminDb.collection("welcomeAgents").add(newAgent);
+    const docRef = await adminDb.collection("welcome_agents").add(newAgent);
 
     // Update the user's remaining agents count
     await userRef.update({
@@ -78,7 +78,7 @@ export async function updateWelcomeAgent({
       return { error: "Agent ID is required" };
     }
 
-    const docRef = adminDb.collection("welcomeAgents").doc(agentId);
+    const docRef = adminDb.collection("welcome_agents").doc(agentId);
     const docSnap = await docRef.get();
 
     if (!docSnap.exists) {
@@ -117,7 +117,7 @@ export async function getWelcomeAgent({ agentId }: { agentId: string }) {
       return { error: "Agent ID is required" };
     }
 
-    const docRef = adminDb.collection("welcomeAgents").doc(agentId);
+    const docRef = adminDb.collection("welcome_agents").doc(agentId);
     const docSnap = await docRef.get();
 
     if (!docSnap.exists) {
@@ -144,7 +144,7 @@ export async function getWorkspaceWelcomeAgents({ workspaceId }: { workspaceId: 
       return { error: "Workspace ID is required", agents: [] };
     }
 
-    const agentsRef = adminDb.collection("welcomeAgents");
+    const agentsRef = adminDb.collection("welcome_agents");
     const q = agentsRef.where("workspaceId", "==", workspaceId);
     const querySnapshot = await q.get();
 
@@ -168,7 +168,7 @@ export async function deleteWelcomeAgent({ agentId }: { agentId: string }) {
       return { error: "Agent ID is required" };
     }
 
-    const docRef = adminDb.collection("welcomeAgents").doc(agentId);
+    const docRef = adminDb.collection("welcome_agents").doc(agentId);
     const docSnap = await docRef.get();
 
     if (!docSnap.exists) {
@@ -445,7 +445,7 @@ export async function getWelcomeAgents({ workspaceId }: { workspaceId: string })
       return { error: "Workspace ID is required" };
     }
 
-    const agentsRef = adminDb.collection("welcomeAgents");
+    const agentsRef = adminDb.collection("welcome_agents");
     const q = agentsRef.where("workspaceId", "==", workspaceId).orderBy("createdAt", "desc");
     const querySnapshot = await q.get();
 

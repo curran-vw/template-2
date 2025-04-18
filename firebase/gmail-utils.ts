@@ -87,8 +87,25 @@ export async function saveGmailConnection({
       isActive: true,
     };
 
-    const connectionRef = await adminDb.collection("gmail_connections").doc();
-    await connectionRef.set(connectionData);
+    // check if the user has reached the limit
+    if (user.limits.connectedGmailAccounts <= user.usage.connectedGmailAccounts) {
+      return { error: "You have reached the limit of connected Gmail accounts" };
+    }
+
+    // check if the user has already connected this gmail account
+    const connectionRef = await adminDb
+      .collection("gmail_connections")
+      .where("email", "==", email)
+      .where("workspaceId", "==", workspaceId)
+      .where("userId", "==", user.id)
+      .get();
+
+    if (connectionRef.docs.length > 0) {
+      return { error: "You have already connected this Gmail account" };
+    }
+
+    const newConnectionRef = adminDb.collection("gmail_connections").doc();
+    await newConnectionRef.set(connectionData);
 
     // Update user remaining connected gmail accounts
     const userRef = adminDb.collection("users").doc(user.id);
@@ -96,7 +113,7 @@ export async function saveGmailConnection({
       "usage.connectedGmailAccounts": FieldValue.increment(1),
     });
 
-    return { success: "Gmail connection saved successfully", connectionId: connectionRef.id };
+    return { success: "Gmail connection saved successfully", connectionId: newConnectionRef.id };
   } catch (error) {
     console.error("Error in saveGmailConnection:", error);
     return { error: "An error occurred while saving Gmail connection" };
@@ -146,7 +163,7 @@ export async function removeConnection({ connectionId }: { connectionId: string 
     // Increment the user's remaining connected gmail accounts
     const userRef = adminDb.collection("users").doc(user.id);
     await userRef.update({
-      remainingConnectedGmailAccounts: FieldValue.increment(1),
+      "usage.connectedGmailAccounts": FieldValue.increment(-1),
     });
 
     return { success: "Connection removed successfully" };
@@ -496,12 +513,12 @@ export async function getConnectionById({ connectionId }: { connectionId: string
   }
 }
 
-export async function reactivateConnection({
+export async function toggleConnectionStatus({
   connectionId,
-  tokens,
+  isActive,
 }: {
   connectionId: string;
-  tokens: GmailTokens;
+  isActive: boolean;
 }) {
   const user = await requireAuth();
 
@@ -516,8 +533,7 @@ export async function reactivateConnection({
 
     // Update connection with new tokens and mark as active
     await connectionRef.update({
-      tokens,
-      isActive: true,
+      isActive,
     });
 
     return { success: "Connection reactivated successfully" };

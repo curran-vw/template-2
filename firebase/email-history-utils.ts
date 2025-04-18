@@ -30,7 +30,7 @@ export async function getEmailHistory({
   try {
     // Create query constraints array
     let query = adminDb
-      .collection("emailHistory")
+      .collection("email_history")
       .where("workspaceId", "==", workspaceId)
       .orderBy("createdAt", "desc");
 
@@ -51,8 +51,6 @@ export async function getEmailHistory({
       ...doc.data(),
       createdAt: doc.data().createdAt.toDate(),
     })) as EmailRecord[];
-
-    console.log("emails", emails);
 
     return {
       emails: emails.map((email) => ({
@@ -91,7 +89,7 @@ export async function updateEmailStatus({
   const user = await requireAuth();
 
   try {
-    const docRef = adminDb.collection("emailHistory").doc(emailId);
+    const docRef = adminDb.collection("email_history").doc(emailId);
     const emailDoc = await docRef.get();
 
     if (!emailDoc.exists) {
@@ -167,7 +165,7 @@ export async function getEmailById({ emailId }: { emailId: string }) {
   const user = await requireAuth();
 
   try {
-    const emailRef = adminDb.collection("emailHistory").doc(emailId);
+    const emailRef = adminDb.collection("email_history").doc(emailId);
     const emailDoc = await emailRef.get();
 
     if (emailDoc.exists) {
@@ -239,7 +237,7 @@ export async function createEmailRecord({
       emailRecord.error = error;
     }
 
-    const docRef = await adminDb.collection("emailHistory").add(emailRecord);
+    const docRef = await adminDb.collection("email_history").add(emailRecord);
     return { id: docRef.id, success: true };
   } catch (error) {
     console.error("Error creating email record:", error);

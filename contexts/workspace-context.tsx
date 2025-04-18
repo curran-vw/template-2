@@ -5,9 +5,7 @@ import { Workspace } from "../types/workspace";
 import { WelcomeAgent } from "../types/welcome-agent";
 import { getWorkspaceWelcomeAgents } from "@/firebase/welcome-agent-utils";
 import { useQuery } from "@tanstack/react-query";
-import { auth } from "@/lib/firebase";
-import { onAuthStateChanged } from "firebase/auth";
-import { getUserWorkspaces } from "@/firebase/workspace-utils";
+import { useAuth } from "@/hooks/use-auth";
 
 interface WorkspaceContextType {
   workspace: Workspace | null;
@@ -18,6 +16,8 @@ interface WorkspaceContextType {
   setAgents: (agents: WelcomeAgent[]) => void;
   agentsLoading: boolean;
   workspacesLoading: boolean;
+  setWorkspacesLoading: (workspacesLoading: boolean) => void;
+  handleSetWorkspaces: (workspaces: Workspace[]) => void;
 }
 
 const WORKSPACE_STORAGE_KEY = "currentWorkspace";
@@ -93,21 +93,6 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     }
   }, [agentsData]);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        const { workspaces } = await getUserWorkspaces();
-        setWorkspaces(workspaces);
-        handleSetWorkspaces(workspaces);
-        setWorkspacesLoading(false);
-      }
-    });
-
-    return () => {
-      unsubscribe();
-    };
-  }, []);
-
   return (
     <WorkspaceContext.Provider
       value={{
@@ -119,6 +104,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         setAgents,
         agentsLoading,
         workspacesLoading,
+        setWorkspacesLoading,
+        handleSetWorkspaces,
       }}
     >
       {children}

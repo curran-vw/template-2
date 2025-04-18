@@ -2,8 +2,8 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
 import Link from "next/link";
-import { PLANS } from "@/types/plans";
-import Subscribe from "./pricing";
+import { PLANS } from "@/plans/plans";
+import Subscribe from "./subscribe";
 
 export default function PricingPage() {
   return (
