@@ -5,20 +5,6 @@ export interface GmailTokens {
   token_type: string;
 }
 
-export interface GmailConnection {
-  id: string;
-  email: string;
-  name: string;
-  tokens: GmailTokens;
-  workspaceId: string;
-  userId: string;
-  connected_at: number;
-  isActive?: boolean;
-  last_refresh?: number;
-  error_count?: number;
-  last_error?: string;
-}
-
 export interface GmailConnectionStatus {
   isActive: boolean;
   lastChecked: number;

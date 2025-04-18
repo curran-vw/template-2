@@ -4,7 +4,7 @@ import { AuthProvider } from "@/contexts/auth-context";
 import { Toaster } from "sonner";
 import { WorkspaceProvider } from "@/contexts/workspace-context";
 import type { Metadata } from "next";
-import { TanstackProvider } from "@/contexts/tanstack-provider";
+import { TanstackProvider } from "@/lib/tanstack-provider";
 const dmSans = DM_Sans({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],

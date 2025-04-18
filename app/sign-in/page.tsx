@@ -14,9 +14,10 @@ import {
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function SignIn() {
-  const { signInWithGoogle } = useAuth();
+  const { signInWithGoogle, user, loading } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [isSigningIn, setIsSigningIn] = useState(false);
 
@@ -26,12 +27,18 @@ export default function SignIn() {
       setIsSigningIn(true);
       await signInWithGoogle();
     } catch (err) {
-      console.error("Sign in error:", err);
       setError("Failed to sign in with Google. Please try again.");
     } finally {
       setIsSigningIn(false);
     }
   };
+
+  const router = useRouter();
+  useEffect(() => {
+    if (user && !loading) {
+      router.push("/");
+    }
+  }, [user, loading]);
 
   return (
     <div className='min-h-screen flex items-center justify-center bg-background'>

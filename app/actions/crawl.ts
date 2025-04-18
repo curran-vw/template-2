@@ -1,21 +1,19 @@
-import { NextResponse } from "next/server";
+"use server";
+
 import * as cheerio from "cheerio";
 import { addLog } from "@/firebase/logs-utils";
-import { requireAuth } from "@/server/auth";
+import { requireAuth } from "@/firebase/auth-utils";
 
-export async function POST(req: Request) {
+interface CrawlParams {
+  url: string;
+  workspaceId: string;
+  agentId?: string;
+}
+
+export async function crawlWebsite({ url, workspaceId, agentId }: CrawlParams) {
   await requireAuth();
 
-  let url: string = "";
-  let workspaceId: string = "";
-  let agentId: string = "";
-
   try {
-    const body = await req.json();
-    url = body.url;
-    workspaceId = body.workspaceId;
-    agentId = body.agentId ?? null;
-
     // Validate URL
     try {
       new URL(url);
@@ -27,7 +25,7 @@ export async function POST(req: Request) {
         workspaceId,
         agentId,
       });
-      return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
+      return { error: "Invalid URL" };
     }
 
     // Create initial log entry
@@ -40,7 +38,6 @@ export async function POST(req: Request) {
     });
 
     // Fetch the webpage
-
     const response = await fetch(url, {
       headers: {
         "User-Agent": "Mozilla/5.0 (compatible; AgentfolioBot/1.0; +https://agentfolio.ai)",
@@ -56,7 +53,7 @@ export async function POST(req: Request) {
         workspaceId,
         agentId,
       });
-      return NextResponse.json({ error: "Failed to fetch webpage" }, { status: response.status });
+      return { error: "Failed to fetch webpage" };
     }
 
     // Get the HTML content
@@ -137,7 +134,7 @@ export async function POST(req: Request) {
         workspaceId,
         agentId,
       });
-      return NextResponse.json({ error: "Failed to summarize content" }, { status: 500 });
+      return { error: "Failed to summarize content" };
     }
 
     const aiResponse = await openRouterResponse.json();
@@ -153,11 +150,11 @@ export async function POST(req: Request) {
       agentId,
     });
 
-    return NextResponse.json({
+    return {
       success: true,
       rawContent: text,
       summary,
-    });
+    };
   } catch (error) {
     await addLog({
       type: "crawl",
@@ -167,6 +164,6 @@ export async function POST(req: Request) {
       workspaceId,
       agentId,
     });
-    return NextResponse.json({ error: "Failed to process webpage" }, { status: 500 });
+    return { error: "Failed to process webpage" };
   }
 }

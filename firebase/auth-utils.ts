@@ -2,7 +2,7 @@
 
 import { adminAuth, adminDb } from "../lib/firebase-admin";
 import { cookies } from "next/headers";
-import { User } from "@/lib/types";
+import { User } from "@/types/user";
 import { redirect } from "next/navigation";
 import { Workspace } from "@/types/workspace";
 import { WelcomeAgent } from "@/types/welcome-agent";

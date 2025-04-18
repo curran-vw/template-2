@@ -4,8 +4,8 @@ import { createContext, useEffect, useState, useContext } from "react";
 import { auth } from "../lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { useRouter } from "next/navigation";
-import { User } from "@/lib/types";
-import { createSessionCookie, getAuthenticatedUser } from "@/server/auth";
+import { User } from "@/types/user";
+import { createSessionCookie, getAuthenticatedUser } from "@/firebase/auth-utils";
 import { getUserWorkspaces } from "@/firebase/workspace-utils";
 import { useWorkspaceContext } from "@/contexts/workspace-context";
 interface AuthContextType {

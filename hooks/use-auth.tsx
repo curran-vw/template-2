@@ -4,8 +4,8 @@ import { useAuthContext } from "../contexts/auth-context";
 import { signInWithPopup, GoogleAuthProvider, signOut as firebaseSignOut } from "firebase/auth";
 import { auth } from "../lib/firebase";
 import { useRouter } from "next/navigation";
-import { logoutUser } from "@/server/auth";
-import { User } from "@/lib/types";
+import { logoutUser } from "@/firebase/auth-utils";
+import { User } from "@/types/user";
 
 interface UseAuthReturn {
   user: User | null;

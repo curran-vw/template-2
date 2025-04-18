@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import * as mailgunUtils from "@/firebase/mailgun-utils";
 import * as welcomeAgentUtils from "@/firebase/welcome-agent-utils";
 import * as gmailUtils from "@/firebase/gmail-utils";
+import { generateEmail } from "@/firebase/welcome-agent-utils";
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,15 +10,7 @@ export async function POST(request: NextRequest) {
 
     // Get the raw email content
     const recipient = formData.get("recipient") as string;
-    const sender = formData.get("sender") as string;
-    const subject = formData.get("subject") as string;
     const bodyPlain = formData.get("body-plain") as string;
-
-    console.log("recipient", recipient);
-    console.log("sender", sender);
-    console.log("subject", subject);
-    console.log("bodyPlain", bodyPlain);
-    console.log("========================================================");
 
     // Find the Welcome Agent
     const localPart = recipient.split("@")[0];
@@ -29,7 +22,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get the agent configuration
-    const { agent } = await welcomeAgentUtils.getWelcomeAgentServer({
+    const { agent } = await welcomeAgentUtils.getWelcomeAgent({
       agentId: notificationEmail.agentId,
     });
 
@@ -38,20 +31,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Welcome agent not found" }, { status: 404 });
     }
 
-    // Extract email from sender or body
-    const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/gi;
-    const emailMatches = [...(bodyPlain?.match(emailRegex) || []), sender];
-    const recipientEmail = emailMatches[0];
-    if (!recipientEmail) {
-      console.error("No email found in content");
-      return NextResponse.json({ error: "No email found" }, { status: 400 });
-    }
-
-    console.log("recipientEmail", recipientEmail);
-
     // Check if email should be reviewed before sending
-    const shouldReview = agent.configuration?.settings?.reviewBeforeSending ?? false;
-
+    const shouldReview = agent.configuration?.settings?.reviewBeforeSending;
     if (shouldReview) {
       return NextResponse.json({
         success: true,
@@ -73,22 +54,28 @@ export async function POST(request: NextRequest) {
       }
 
       // Generate the email content
-      const { success, error, subject, body } = await welcomeAgentUtils.generateWelcomeEmail{
-        agent,
-          signupInfo: {
-          email: recipientEmail,
-          rawContent: bodyPlain,
-        }
-        };
-      
-
-      await gmailUtils.sendEmail({
+      const { success, error, email } = await generateEmail({
+        signupInfo: bodyPlain,
+        directive: agent.businessContext?.purpose,
+        businessContext: {
+          website: agent.businessContext?.website,
+          purpose: agent.businessContext?.purpose,
+          websiteSummary: agent.businessContext?.websiteSummary,
+        },
         workspaceId: agent.workspaceId,
-        connectionId: connection.id,
-        to: recipientEmail,
-        subject: agent.lastTestEmail?.subject!,
-        body: agent.lastTestEmail?.body!,
       });
+
+      if (success) {
+        await gmailUtils.sendEmail({
+          connectionId: connection.id,
+          to: recipient,
+          subject: email.subject,
+          body: email.body,
+          isTest: false,
+        });
+      } else if (error) {
+        return NextResponse.json({ error: error }, { status: 400 });
+      }
     } else {
       return NextResponse.json(
         { error: "No email account configured for this agent" },

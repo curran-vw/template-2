@@ -3,7 +3,7 @@
 import { adminDb, adminAuth } from "../lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
 import * as gmailUtils from "./gmail-utils";
-import { requireAuth } from "@/server/auth";
+import { requireAuth } from "@/firebase/auth-utils";
 
 export interface EmailRecord {
   id: string;
@@ -106,18 +106,20 @@ export async function updateEmailStatus({
 
       try {
         // First verify the Gmail connection is still valid
-        const connection = await gmailUtils.getConnection(emailData.gmailConnectionId);
+        const connection = await gmailUtils.getConnectionById({
+          connectionId: emailData.gmailConnectionId,
+        });
 
         if (!connection) {
           return { error: "Gmail connection no longer exists" };
         }
 
         const { error: sendError } = await gmailUtils.sendEmail({
-          workspaceId,
           connectionId: emailData.gmailConnectionId,
           to: emailData.recipientEmail,
           subject: emailData.subject,
           body: emailData.body,
+          isTest: false,
         });
 
         if (sendError) {

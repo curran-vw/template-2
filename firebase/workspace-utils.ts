@@ -2,7 +2,7 @@
 
 import { adminDb } from "../lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
-import { requireAuth } from "@/server/auth";
+import { requireAuth } from "@/firebase/auth-utils";
 
 export async function createWorkspace({ name }: { name: string }) {
   const user = await requireAuth();

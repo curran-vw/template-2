@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
+"use server";
+
 import { headers } from "next/headers";
 import { GMAIL_SCOPES } from "@/types/gmail";
 
-export async function GET() {
+export async function connectGoogle() {
   const headersList = headers();
   const host = headersList.get("host");
 
@@ -41,5 +42,5 @@ export async function GET() {
 
   const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 
-  return NextResponse.redirect(googleAuthUrl);
+  return { success: true, url: googleAuthUrl };
 }

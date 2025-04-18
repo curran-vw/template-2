@@ -2,7 +2,7 @@
 
 import { adminDb, adminAuth } from "../lib/firebase-admin";
 import { nanoid } from "nanoid";
-import { getAuthenticatedUser } from "../server/auth";
+import { getAuthenticatedUser } from "./auth-utils";
 interface NotificationEmail {
   id: string;
   agentId: string;

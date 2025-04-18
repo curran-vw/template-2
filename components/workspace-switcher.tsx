@@ -33,8 +33,8 @@ import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import Link from "next/link";
 
 export function WorkspaceSwitcher() {
-  const { workspace, workspaces, setWorkspace, setWorkspaces } = useWorkspace();
-  const { user, loading, setUser } = useAuth();
+  const { workspace, workspaces, setWorkspace, setWorkspaces, workspacesLoading } = useWorkspace();
+  const { user, setUser } = useAuth();
   const [isCreating, setIsCreating] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
@@ -71,7 +71,7 @@ export function WorkspaceSwitcher() {
     ? workspaces.filter((w) => w.name.toLowerCase().includes(searchQuery.toLowerCase()))
     : workspaces;
 
-  if (loading) {
+  if (workspacesLoading) {
     return <Skeleton className='h-8 w-[150px] lg:w-64' />;
   }
 

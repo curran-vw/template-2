@@ -4,19 +4,15 @@ import { useState, useEffect } from "react";
 import { Loader2, Check, RefreshCw, ChevronRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { useCrawler } from "@/hooks/use-crawler";
-
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { toast } from "sonner";
+import { useWorkspace } from "@/hooks/use-workspace";
+import { crawlWebsite } from "@/app/actions/crawl";
 
 interface BusinessContextProps {
   website: string;
@@ -47,17 +43,11 @@ export function BusinessContext({
   showTooltip,
   onTooltipOpenChange,
 }: BusinessContextProps) {
-  const { crawlWebsite, isCrawling, crawlError } = useCrawler();
-  const [hasCrawled, setHasCrawled] = useState(false);
-  const [crawlStatus, setCrawlStatus] = useState<"idle" | "success" | "failed">(
-    "idle",
-  );
-  const [showAdditionalContext, setShowAdditionalContext] = useState(
-    !!additionalContext,
-  );
-  const [websiteSummary, setWebsiteSummary] = useState(
-    initialWebsiteSummary || "",
-  );
+  const { workspace } = useWorkspace();
+  const [isCrawling, setIsCrawling] = useState(false);
+  const [crawlStatus, setCrawlStatus] = useState<"idle" | "success" | "failed">("idle");
+  const [showAdditionalContext, setShowAdditionalContext] = useState(!!additionalContext);
+  const [websiteSummary, setWebsiteSummary] = useState(initialWebsiteSummary || "");
   const [isSummaryCollapsed, setIsSummaryCollapsed] = useState(false);
 
   useEffect(() => {
@@ -80,17 +70,28 @@ export function BusinessContext({
       normalizedUrl = "https://" + normalizedUrl;
     }
 
-    const result = await crawlWebsite(normalizedUrl, agentId);
+    setIsCrawling(true);
 
-    if (result?.success) {
+    const { success, error, summary } = await crawlWebsite({
+      url: website,
+      workspaceId: workspace?.id!,
+      agentId,
+    });
+
+    if (success) {
+      toast.success("Success", {
+        description: success,
+      });
       setCrawlStatus("success");
-      setHasCrawled(true);
-      setWebsiteSummary(result.summary);
-      onWebsiteSummaryChange(result.summary);
-    } else {
+      setWebsiteSummary(summary);
+      onWebsiteSummaryChange(summary);
+    } else if (error) {
       setCrawlStatus("failed");
-      setHasCrawled(true);
+      toast.error("Error", {
+        description: error,
+      });
     }
+    setIsCrawling(false);
   };
 
   return (
@@ -133,17 +134,10 @@ export function BusinessContext({
             )}
           </Button>
         </div>
-        {crawlError && (
-          <p className='mt-1 text-sm text-destructive'>
-            {crawlError}. Please add your business information manually below.
-          </p>
-        )}
       </div>
 
       <div className='space-y-2'>
-        <Label className='text-sm font-medium'>
-          What are people signing up for?
-        </Label>
+        <Label className='text-sm font-medium'>What are people signing up for?</Label>
         <TooltipProvider>
           <Tooltip open={showTooltip}>
             <TooltipTrigger asChild>
@@ -153,14 +147,11 @@ export function BusinessContext({
                 onChange={(e) => onPurposeChange(e.target.value)}
                 className={cn(
                   "min-h-[100px]",
-                  validationError &&
-                    "border-destructive focus-visible:ring-destructive",
+                  validationError && "border-destructive focus-visible:ring-destructive",
                 )}
               />
             </TooltipTrigger>
-            {validationError && (
-              <TooltipContent>{validationError}</TooltipContent>
-            )}
+            {validationError && <TooltipContent>{validationError}</TooltipContent>}
           </Tooltip>
         </TooltipProvider>
       </div>
@@ -170,14 +161,9 @@ export function BusinessContext({
           <Checkbox
             id='show-additional-context'
             checked={showAdditionalContext}
-            onCheckedChange={(checked) =>
-              setShowAdditionalContext(checked === true)
-            }
+            onCheckedChange={(checked) => setShowAdditionalContext(checked === true)}
           />
-          <Label
-            htmlFor='show-additional-context'
-            className='ml-2 text-sm font-medium'
-          >
+          <Label htmlFor='show-additional-context' className='ml-2 text-sm font-medium'>
             Add additional context
           </Label>
         </div>
@@ -199,26 +185,17 @@ export function BusinessContext({
             className='flex w-full items-center gap-2 text-sm font-medium transition-colors hover:text-muted-foreground'
           >
             <ChevronRight
-              className={cn(
-                "h-4 w-4 transition-transform",
-                !isSummaryCollapsed && "rotate-90",
-              )}
+              className={cn("h-4 w-4 transition-transform", !isSummaryCollapsed && "rotate-90")}
             />
             Website Summary
           </button>
           <div
             className={cn(
               "overflow-hidden transition-all duration-200 ease-in-out",
-              isSummaryCollapsed
-                ? "max-h-0 opacity-0"
-                : "max-h-[300px] opacity-100",
+              isSummaryCollapsed ? "max-h-0 opacity-0" : "max-h-[300px] opacity-100",
             )}
           >
-            <Textarea
-              value={websiteSummary}
-              readOnly
-              className='min-h-[100px] bg-muted/50'
-            />
+            <Textarea value={websiteSummary} readOnly className='min-h-[100px] bg-muted/50' />
           </div>
         </div>
       )}

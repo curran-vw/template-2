@@ -1,10 +1,8 @@
 "use client";
 
-import type React from "react";
-
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { PlusCircle, Mail, Zap, Clock, MoreVertical, Info, Plus } from "lucide-react";
+import { Mail, Zap, Clock, MoreVertical, Info, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { useWorkspace } from "@/hooks/use-workspace";
@@ -24,22 +22,21 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/use-auth";
 import { LoadingSpinner } from "@/components/loading-spinner";
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogTitle,
-  AlertDialogFooter,
-  AlertDialogHeader,
-} from "@/components/ui/alert-dialog";
-import { AlertDialogDescription } from "@radix-ui/react-alert-dialog";
 import EmptyWelcomeAgents from "@/components/empty-welcome-agents";
 import UpgradePlanModal from "@/components/updgrade-plan-modal";
+import {
+  Dialog,
+  DialogTitle,
+  DialogHeader,
+  DialogContent,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 export default function WelcomeAgentList() {
   const router = useRouter();
   const { agents, agentsLoading } = useWorkspace();
-  const { user, setUser } = useAuth();
+  const { user } = useAuth();
 
   const [upgradePlanModalOpen, setUpgradePlanModalOpen] = useState(false);
   const handleAddAgent = () => {
@@ -97,7 +94,7 @@ export default function WelcomeAgentList() {
             <h1 className='text-3xl font-bold tracking-tight'>My Agents</h1>
             <p className='text-muted-foreground'>Create and manage your automated welcome agents</p>
           </div>
-          <Button onClick={() => handleAddAgent()} className='flex items-center gap-2'>
+          <Button size='lg' onClick={() => handleAddAgent()} className='flex items-center gap-2'>
             <Plus className='h-4 w-4' />
             Add New Agent
           </Button>
@@ -213,19 +210,19 @@ function AgentCard({ agent }: { agent: WelcomeAgent }) {
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   return (
-    <Card className='flex flex-col transition-all duration-200 hover:shadow-md'>
-      <CardHeader className='flex-1 space-y-4 pb-6'>
-        <div className='flex items-center justify-between'>
-          <CardTitle
-            className='line-clamp-1 cursor-pointer text-lg transition-colors hover:text-primary'
-            onClick={() => router.push(`/agents/${agent.id}`)}
-          >
-            {agent.name}
-          </CardTitle>
-          <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-            <DropdownMenu>
+    <>
+      <Card className='flex flex-col transition-all duration-200 hover:shadow-md'>
+        <CardHeader className='flex-1 space-y-4 pb-6'>
+          <div className='flex items-center justify-between'>
+            <CardTitle
+              className='line-clamp-1 cursor-pointer text-lg transition-colors hover:text-primary'
+              onClick={() => router.push(`/agents/${agent.id}`)}
+            >
+              {agent.name}
+            </CardTitle>
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
-                <Button variant='ghost' className='h-8 w-8 p-0'>
+                <Button variant='ghost' size='icon'>
                   <MoreVertical className='h-4 w-4' />
                   <span className='sr-only'>Open menu</span>
                 </Button>
@@ -243,90 +240,94 @@ function AgentCard({ agent }: { agent: WelcomeAgent }) {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will permanently delete the welcome agent &quot;
-                  {agent?.name}&quot;. This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <Button variant='destructive' onClick={handleDeleteConfirm} disabled={isDeleting}>
-                  {isDeleting && <LoadingSpinner className='text-white' />}
-                  Delete
-                </Button>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
-        <div className='space-y-2'>
-          <div className='flex items-center'>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant='outline'
-                    size='sm'
-                    className='h-8 gap-2 rounded-full text-xs font-normal hover:bg-muted'
-                    onClick={handleEmailClick}
-                  >
-                    <GoogleIcon className='h-4 w-4' />
-                    {agent.configuration?.emailAccount || "No email attached"}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Click to configure email settings</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
           </div>
-          <div className='group relative'>
-            <p className='line-clamp-2 text-sm text-muted-foreground'>
-              {agent.emailPurpose?.directive || "No directive set"}
-            </p>
-            {agent.emailPurpose?.directive && (
+          <div className='space-y-2'>
+            <div className='flex items-center'>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
-                      variant='ghost'
-                      size='sm'
-                      className='absolute -right-2 -top-2 h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100'
+                      variant='outline'
+                      size='lg'
+                      className='h-8 gap-2 rounded-full text-xs font-normal hover:bg-muted'
+                      onClick={handleEmailClick}
                     >
-                      <Info className='h-4 w-4' />
+                      <GoogleIcon className='h-4 w-4' />
+                      {agent.configuration?.emailAccount || "No email attached"}
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p className='max-w-xs'>{agent.emailPurpose.directive}</p>
+                    <p>Click to configure email settings</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
+            </div>
+            <div className='group relative'>
+              <p className='line-clamp-2 text-sm text-muted-foreground'>
+                {agent.emailPurpose?.directive || "No directive set"}
+              </p>
+              {agent.emailPurpose?.directive && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant='ghost'
+                        size='sm'
+                        className='absolute -right-2 -top-2 h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100'
+                      >
+                        <Info className='h-4 w-4' />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className='max-w-xs'>{agent.emailPurpose.directive}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className='border-t pt-6'>
+          <div className='flex items-center justify-between'>
+            <div className='flex items-center gap-2'>
+              <div
+                className={`h-2 w-2 rounded-full ${
+                  agent.status === "published" ? "bg-green-500" : "bg-yellow-500"
+                }`}
+              />
+              <span className='text-sm capitalize'>
+                {agent.status === "published" ? "active" : "draft"}
+              </span>
+            </div>
+            {agent.status === "published" && agent.emailsSentToday !== undefined && (
+              <div className='text-sm text-muted-foreground'>
+                {agent.emailsSentToday} emails sent today
+              </div>
             )}
           </div>
-        </div>
-      </CardHeader>
-      <CardContent className='border-t pt-6'>
-        <div className='flex items-center justify-between'>
-          <div className='flex items-center gap-2'>
-            <div
-              className={`h-2 w-2 rounded-full ${
-                agent.status === "published" ? "bg-green-500" : "bg-yellow-500"
-              }`}
-            />
-            <span className='text-sm capitalize'>
-              {agent.status === "published" ? "active" : "draft"}
-            </span>
-          </div>
-          {agent.status === "published" && agent.emailsSentToday !== undefined && (
-            <div className='text-sm text-muted-foreground'>
-              {agent.emailsSentToday} emails sent today
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Are you sure?</DialogTitle>
+            <DialogDescription>
+              This will permanently delete the welcome agent &quot;
+              {agent?.name}&quot;. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant='outline' onClick={() => setIsDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant='destructive' onClick={handleDeleteConfirm} disabled={isDeleting}>
+              {isDeleting && <LoadingSpinner className='text-white' />}
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

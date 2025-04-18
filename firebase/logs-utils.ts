@@ -1,6 +1,6 @@
 "use server";
 
-import { requireAuth } from "@/server/auth";
+import { requireAuth } from "@/firebase/auth-utils";
 import { adminDb, adminAuth } from "../lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
 

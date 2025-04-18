@@ -1,9 +1,7 @@
 "use client";
 
-import type React from "react";
-
 import { useState, useCallback, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Save,
@@ -22,7 +20,6 @@ import { toast } from "sonner";
 import { useWorkspace } from "@/hooks/use-workspace";
 import * as welcomeAgentUtils from "@/firebase/welcome-agent-utils";
 import { useAuth } from "@/hooks/use-auth";
-import { useEmailGenerator } from "@/hooks/use-email-generator";
 import { type GmailTokens } from "@/firebase/gmail-utils";
 import * as gmailUtils from "@/firebase/gmail-utils";
 import * as mailgunUtils from "@/firebase/mailgun-utils";
@@ -68,12 +65,14 @@ import { LoadingSpinner } from "@/components/loading-spinner";
 import { PRESET_DIRECTIVES } from "@/lib/constants";
 import { type WelcomeAgent } from "@/types/welcome-agent";
 import { useQuery } from "@tanstack/react-query";
+import { GmailConnection } from "@/firebase/gmail-utils";
+import { generateEmail } from "@/firebase/welcome-agent-utils";
 
 export type EmailGenerationStep = "user-info" | "business-info" | "email-body" | "subject-line";
 
 export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
   const router = useRouter();
-  const { workspace, agents, setWorkspaces, setAgents } = useWorkspace();
+  const { workspace, agents, setAgents } = useWorkspace();
   const { user } = useAuth();
   const [signupInfo, setSignupInfo] = useState(
     "Name: Curran Van Waarde\nEmail: Curran@Agentfolio.ai\nWebsite: Agentfolio.ai\nRole: Founder",
@@ -125,18 +124,7 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
   const [isEmailAccountOpen, setIsEmailAccountOpen] = useState(true);
   const [isNewContactsOpen, setIsNewContactsOpen] = useState(false);
   const [isAdditionalSettingsOpen, setIsAdditionalSettingsOpen] = useState(false);
-  const [connectedAccounts, setConnectedAccounts] = useState<
-    {
-      id: string;
-      email: string;
-      name: string;
-      tokens: GmailTokens;
-      workspaceId: string;
-      userId: string;
-      connected_at: number;
-      isActive?: boolean;
-    }[]
-  >([]);
+  const [connectedAccounts, setConnectedAccounts] = useState<GmailConnection[]>([]);
 
   const [isTestingEmail, setIsTestingEmail] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(!agent);
@@ -156,7 +144,8 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
     },
   });
 
-  const { generateEmail, isGenerating } = useEmailGenerator();
+  const [isGeneratingEmail, setIsGeneratingEmail] = useState(false);
+  const [isRemovingAccount, setIsRemovingAccount] = useState<string | null>(null);
 
   // Add new state for settings
   const [settings, setSettings] = useState({
@@ -194,8 +183,8 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
   });
 
   useEffect(() => {
-    if (connectedAccountsData?.success) {
-      setConnectedAccounts(connectedAccountsData.connections || []);
+    if (connectedAccountsData && connectedAccountsData.connections) {
+      setConnectedAccounts(connectedAccountsData.connections);
       setIsLoadingAccounts(false);
     } else if (connectedAccountsData?.error) {
       toast.error("Error", {
@@ -292,23 +281,31 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
   const generateEmailPreview = async () => {
     setIsSignupInfoDialogOpen(false);
     setIsGenerationDialogOpen(true);
+    setIsGeneratingEmail(true);
 
-    const email = await generateEmail({
+    const { success, email, error } = await generateEmail({
       signupInfo,
       directive,
       businessContext: {
         website: businessInfo.website,
         purpose: businessInfo.purpose,
-        websiteSummary,
+        websiteSummary: websiteSummary,
         additionalContext: businessInfo.context,
       },
+      workspaceId: workspace?.id!,
       agentId: agent?.id,
     });
 
-    if (email) {
+    if (error) {
+      toast.error("Error", {
+        description: error,
+      });
+    } else if (success) {
       setEmailDetails(email);
       setHasTestedAgent(true);
     }
+
+    setIsGeneratingEmail(false);
   };
 
   const handleCopyEmail = () => {
@@ -482,7 +479,7 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
   const handleGmailConnected = async (email: string, name: string, tokens: GmailTokens) => {
     if (!workspace?.id || !user?.id) return;
 
-    const { success, error, connectionId } = await gmailUtils.saveGmailConnection({
+    const { success, error, connection } = await gmailUtils.saveGmailConnection({
       workspaceId: workspace.id,
       email,
       name,
@@ -493,13 +490,12 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
       setConnectedAccounts((prev) => [
         ...prev,
         {
-          id: connectionId,
+          id: connection.id,
           email,
           name,
           tokens,
           workspaceId: workspace.id,
           userId: user.id,
-          connected_at: Date.now(),
           isActive: true,
         },
       ]);
@@ -535,6 +531,7 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
   };
 
   const handleRemoveGmailConnection = async (connectionId: string) => {
+    setIsRemovingAccount(connectionId);
     const { success, error } = await gmailUtils.removeConnection({
       connectionId,
     });
@@ -560,6 +557,7 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
         description: error,
       });
     }
+    setIsRemovingAccount(null);
   };
 
   const handleTestEmail = async (connectionId: string) => {
@@ -573,7 +571,6 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
     setIsTestingEmail(connectionId);
     const { success, error } = await gmailUtils.testEmailConnection({
       connectionId,
-      workspaceId: workspace.id,
     });
 
     if (success) {
@@ -826,12 +823,12 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
                   <div className='space-y-6'>
                     <Button
                       onClick={handleTest}
-                      disabled={isGenerating}
+                      disabled={isGeneratingEmail}
                       className='group relative w-full overflow-hidden py-6 text-lg font-semibold'
                     >
                       <span className='relative z-10 flex items-center justify-center'>
                         <Sparkles className='mr-2 h-5 w-5' />
-                        {isGenerating
+                        {isGeneratingEmail
                           ? "Generating..."
                           : hasTestedAgent
                           ? "Regenerate Email Preview"
@@ -840,7 +837,7 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
                       <div className='absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 opacity-75 transition-opacity group-hover:opacity-100' />
                     </Button>
 
-                    <EmailPreview {...emailDetails} loading={isGenerating} />
+                    <EmailPreview {...emailDetails} loading={isGeneratingEmail} />
                   </div>
                 </CardContent>
               </Card>
@@ -965,7 +962,7 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
                                   className='text-primary hover:bg-primary/10 hover:text-primary'
                                 >
                                   {isTestingEmail === account.id ? (
-                                    <Loader2 className='h-4 w-4 animate-spin' />
+                                    <LoadingSpinner />
                                   ) : (
                                     <Mail className='h-4 w-4' />
                                   )}
@@ -977,7 +974,11 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
                                   onClick={() => handleRemoveGmailConnection(account.id!)}
                                   className='text-destructive hover:bg-destructive/10 hover:text-destructive'
                                 >
-                                  <Trash2 className='h-4 w-4' />
+                                  {isRemovingAccount === account.id ? (
+                                    <LoadingSpinner />
+                                  ) : (
+                                    <Trash2 className='h-4 w-4' />
+                                  )}
                                   <span className='sr-only'>Remove account</span>
                                 </Button>
                               </div>
