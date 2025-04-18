@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import * as mailgunUtils from "@/firebase/mailgun-utils";
 import * as welcomeAgentUtils from "@/firebase/welcome-agent-utils";
 import * as gmailUtils from "@/firebase/gmail-utils";
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
 
@@ -12,8 +12,12 @@ export async function POST(request: Request) {
     const sender = formData.get("sender") as string;
     const subject = formData.get("subject") as string;
     const bodyPlain = formData.get("body-plain") as string;
-    const strippedText = formData.get("stripped-text") as string;
-    const workspaceId = formData.get("workspaceId") as string;
+
+    console.log("recipient", recipient);
+    console.log("sender", sender);
+    console.log("subject", subject);
+    console.log("bodyPlain", bodyPlain);
+    console.log("========================================================");
 
     // Find the Welcome Agent
     const localPart = recipient.split("@")[0];
@@ -25,37 +29,25 @@ export async function POST(request: Request) {
     }
 
     // Get the agent configuration
-    const { agent } = await welcomeAgentUtils.getWelcomeAgent({
+    const { agent } = await welcomeAgentUtils.getWelcomeAgentServer({
       agentId: notificationEmail.agentId,
     });
+
     if (!agent) {
+      console.error("Welcome agent not found for:", notificationEmail.agentId);
       return NextResponse.json({ error: "Welcome agent not found" }, { status: 404 });
     }
 
     // Extract email from sender or body
     const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/gi;
-    const emailMatches = [
-      ...(bodyPlain?.match(emailRegex) || []),
-      ...(strippedText?.match(emailRegex) || []),
-      sender,
-    ];
+    const emailMatches = [...(bodyPlain?.match(emailRegex) || []), sender];
     const recipientEmail = emailMatches[0];
-
     if (!recipientEmail) {
       console.error("No email found in content");
       return NextResponse.json({ error: "No email found" }, { status: 400 });
     }
 
-    // Pass the entire email content to the AI
-    const signupInfo = {
-      email: recipientEmail,
-      rawContent: strippedText || bodyPlain,
-      subject,
-      sender,
-    };
-
-    // Generate welcome email
-    const emailContent = await welcomeAgentUtils.generateWelcomeEmail({ agent, signupInfo });
+    console.log("recipientEmail", recipientEmail);
 
     // Check if email should be reviewed before sending
     const shouldReview = agent.configuration?.settings?.reviewBeforeSending ?? false;
@@ -74,21 +66,34 @@ export async function POST(request: Request) {
         email: agent.configuration.emailAccount,
       });
       if (!connection) {
-        throw new Error(`No Gmail connection found for ${agent.configuration.emailAccount}`);
+        return NextResponse.json(
+          { error: `No Gmail connection found for ${agent.configuration.emailAccount}` },
+          { status: 400 },
+        );
       }
 
+      // Generate the email content
+      const { success, error, subject, body } = await welcomeAgentUtils.generateWelcomeEmail{
+        agent,
+          signupInfo: {
+          email: recipientEmail,
+          rawContent: bodyPlain,
+        }
+        };
+      
+
       await gmailUtils.sendEmail({
-        workspaceId,
-        connectionId: connection.id!,
+        workspaceId: agent.workspaceId,
+        connectionId: connection.id,
         to: recipientEmail,
-        subject: emailContent?.subject,
-        body: emailContent?.body,
+        subject: agent.lastTestEmail?.subject!,
+        body: agent.lastTestEmail?.body!,
       });
     } else {
-      console.warn("No email account configured for agent:", {
-        agentId: agent.id,
-        configuration: agent.configuration,
-      });
+      return NextResponse.json(
+        { error: "No email account configured for this agent" },
+        { status: 400 },
+      );
     }
 
     return NextResponse.json({ success: true });

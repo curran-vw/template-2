@@ -87,8 +87,6 @@ export async function getNotificationEmail({
 }
 
 export async function findByLocalPart({ localPart }: { localPart: string }) {
-  const user = await getAuthenticatedUser();
-
   try {
     const emailsRef = adminDb.collection("notification_emails");
     const q = emailsRef.where("emailLocalPart", "==", localPart).where("isActive", "==", true);

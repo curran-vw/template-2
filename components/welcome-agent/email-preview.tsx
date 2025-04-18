@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  Paperclip,
-  ImageIcon,
-  Smile,
-  MoreVertical,
-  Minus,
-  Square,
-  X,
-} from "lucide-react";
+import { Paperclip, ImageIcon, Smile, MoreVertical, Minus, Square, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -21,12 +13,7 @@ interface EmailPreviewProps {
   loading?: boolean;
 }
 
-export function EmailPreview({
-  to,
-  subject,
-  body,
-  loading,
-}: EmailPreviewProps) {
+export function EmailPreview({ to, subject, body, loading }: EmailPreviewProps) {
   const handleSend = () => {
     toast.success("This is just a preview", {
       description: "Emails can't be sent from here.",

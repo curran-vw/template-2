@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { addLog } from "@/firebase/logs-utils";
 
 export async function POST(req: Request) {
-  let signupInfo: any;
+  let signupInfo: string = "";
   let directive: string = "";
   let businessContext: any;
   let workspaceId: string = "";

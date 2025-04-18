@@ -136,6 +136,31 @@ export async function getWelcomeAgent({ agentId }: { agentId: string }) {
   }
 }
 
+export async function getWelcomeAgentServer({ agentId }: { agentId: string }) {
+  try {
+    if (!agentId) {
+      return { error: "Agent ID is required" };
+    }
+
+    const docRef = adminDb.collection("welcome_agents").doc(agentId);
+    const docSnap = await docRef.get();
+
+    if (!docSnap.exists) {
+      return { error: "Welcome agent does not exist" };
+    }
+
+    const agent = {
+      id: docSnap.id,
+      ...docSnap.data(),
+    } as WelcomeAgent;
+
+    return { success: "Welcome agent retrieved successfully", agent };
+  } catch (error) {
+    console.error("Error getting welcome agent:", error);
+    return { error: "An error occurred while retrieving the welcome agent" };
+  }
+}
+
 export async function getWorkspaceWelcomeAgents({ workspaceId }: { workspaceId: string }) {
   await requireAuth();
 
@@ -196,7 +221,7 @@ export async function generateWelcomeEmail({
   signupInfo,
 }: {
   agent: WelcomeAgent;
-  signupInfo: any;
+  signupInfo: string;
 }) {
   const user = await requireAuth();
 

@@ -174,7 +174,7 @@ export async function removeConnection({ connectionId }: { connectionId: string 
 }
 
 export async function refreshTokenIfNeeded({ connectionId }: { connectionId: string }) {
-  const user = await requireAuth();
+  // const user = await requireAuth();
 
   try {
     const connectionRef = adminDb.collection("gmail_connections").doc(connectionId);
@@ -285,18 +285,16 @@ export async function sendEmail({
   body,
   test,
 }: SendEmailParams) {
-  const user = await requireAuth();
+  // const user = await requireAuth();
 
   try {
     // Get the connection details
-    const connectionResult = await getConnectionById({ connectionId });
-    if (connectionResult.error) {
+    const { connection, error } = await getConnectionById({ connectionId });
+    if (!connection) {
       return {
-        error: `No Gmail connection found for ID: ${connectionId}.`,
+        error: `No Gmail connection found for ID: ${error}.`,
       };
     }
-
-    const connection = connectionResult.connection;
 
     // // Check if the connection is inactive and try to reactivate it
     // if (connection?.isActive === false) {
@@ -318,12 +316,12 @@ export async function sendEmail({
     //   }
     // }
 
-    // // Get fresh access token
-    // const refreshResult = await refreshTokenIfNeeded({ connectionId });
-    // if (refreshResult.error) {
-    //   return { error: refreshResult.error };
-    // }
-    // const accessToken = refreshResult.accessToken;
+    // Get fresh access token
+    const refreshResult = await refreshTokenIfNeeded({ connectionId });
+    if (refreshResult.error) {
+      return { error: refreshResult.error };
+    }
+    const accessToken = refreshResult.accessToken;
 
     // Construct the email in RFC 822 format with proper From header
     const emailContent = [
@@ -346,7 +344,7 @@ export async function sendEmail({
     const response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${connection?.tokens.access_token}`,
+        Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
         "X-Goog-AuthUser": "0",
       },
@@ -363,7 +361,7 @@ export async function sendEmail({
 
     if (!test) {
       // Update user email sent number
-      const userRef = adminDb.collection("users").doc(user.id);
+      const userRef = adminDb.collection("users").doc(connection.userId);
       await userRef.update({
         remainingEmailSent: FieldValue.increment(-1),
       });
@@ -463,7 +461,7 @@ export async function getConnection({ connectionId }: { connectionId: string }) 
 }
 
 export async function getConnectionByEmail({ email }: { email: string }) {
-  const user = await requireAuth();
+  // const user = await requireAuth();
 
   try {
     const connectionsRef = adminDb.collection("gmail_connections");
@@ -487,7 +485,7 @@ export async function getConnectionByEmail({ email }: { email: string }) {
 }
 
 export async function getConnectionById({ connectionId }: { connectionId: string }) {
-  const user = await requireAuth();
+  // const user = await requireAuth();
 
   try {
     const connectionRef = adminDb.collection("gmail_connections").doc(connectionId);

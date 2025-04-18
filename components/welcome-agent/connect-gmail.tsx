@@ -7,8 +7,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { GmailTokens } from "@/types/gmail";
-import { validateTokens } from "@/server/gmail";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { validateTokens } from "@/server/gmail";
 
 interface ConnectGmailProps {
   onSuccess?: (email: string, name: string, tokens: GmailTokens) => void;
