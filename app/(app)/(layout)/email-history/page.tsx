@@ -383,13 +383,11 @@ export default function EmailHistory() {
                                     className='mt-0 focus-visible:outline-none focus-visible:ring-0'
                                   >
                                     <div className='max-h-[500px] space-y-4 overflow-y-auto rounded-md bg-muted/30 p-4'>
-                                      {email.userInfo ? (
+                                      {/* {email.userInfo ? (
                                         formatMarkdownContent(email.userInfo).map(
                                           (section, index) => (
                                             <div key={index} className='text-sm'>
                                               {section.split("\n").map((line, lineIndex) => {
-                                                // Handle bold text
-                                                const boldText = line.match(/\*\*.*?\*\*/g);
                                                 if (boldText) {
                                                   const parts = line.split(/(\*\*.*?\*\*)/);
                                                   return (
@@ -405,7 +403,6 @@ export default function EmailHistory() {
                                                               key={partIndex}
                                                               className='font-semibold'
                                                             >
-                                                              {part.replace(/\*\*/g, "")}
                                                             </span>
                                                           );
                                                         }
@@ -457,7 +454,7 @@ export default function EmailHistory() {
                                             No personal details available
                                           </p>
                                         </div>
-                                      )}
+                                      )}*/}
                                     </div>
                                   </TabsContent>
 
@@ -466,15 +463,13 @@ export default function EmailHistory() {
                                     className='mt-0 focus-visible:outline-none focus-visible:ring-0'
                                   >
                                     <div className='max-h-[500px] space-y-4 overflow-y-auto rounded-md bg-muted/30 p-4'>
-                                      {email.businessInfo ? (
+                                      {/* {email.businessInfo ? (
                                         formatMarkdownContent(email.businessInfo).map(
                                           (section, index) => (
                                             <div key={index} className='text-sm'>
                                               {section.split("\n").map((line, lineIndex) => {
                                                 // Handle bold text
-                                                const boldText = line.match(/\*\*.*?\*\*/g);
                                                 if (boldText) {
-                                                  const parts = line.split(/(\*\*.*?\*\*)/);
                                                   return (
                                                     <div key={lineIndex} className='mb-2'>
                                                       {parts.map((part, partIndex) => {
@@ -487,7 +482,6 @@ export default function EmailHistory() {
                                                               key={partIndex}
                                                               className='font-semibold'
                                                             >
-                                                              {part.replace(/\*\*/g, "")}
                                                             </span>
                                                           );
                                                         }
@@ -539,7 +533,7 @@ export default function EmailHistory() {
                                             No business details available
                                           </p>
                                         </div>
-                                      )}
+                                      )} */}
                                     </div>
                                   </TabsContent>
                                 </div>

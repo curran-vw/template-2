@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { gmailUtils } from "../firebase/gmail-utils";
+import * as gmailUtils from "../firebase/gmail-utils";
 
 /**
  * Hook to periodically check and fix inactive Gmail connections
@@ -7,10 +7,7 @@ import { gmailUtils } from "../firebase/gmail-utils";
  * @param intervalMinutes How often to check (default: 60 minutes)
  * @returns An object with the current status of the connection check
  */
-export function useGmailConnectionCheck(
-  workspaceId: string,
-  intervalMinutes = 60,
-) {
+export function useGmailConnectionCheck(workspaceId: string, intervalMinutes = 60) {
   const intervalIdRef = useRef<NodeJS.Timeout | null>(null);
   const isCheckingRef = useRef(false);
   const lastCheckTimeRef = useRef<Date | null>(null);
@@ -24,7 +21,7 @@ export function useGmailConnectionCheck(
       isCheckingRef.current = true;
 
       gmailUtils
-        .checkAndFixInactiveConnections(workspaceId)
+        .checkAndFixInactiveConnections({ workspaceId })
         .then((result) => {
           lastCheckTimeRef.current = new Date();
           lastCheckResultRef.current = result;
@@ -42,10 +39,7 @@ export function useGmailConnectionCheck(
     startCheck();
 
     // Set up interval
-    intervalIdRef.current = setInterval(
-      startCheck,
-      intervalMinutes * 60 * 1000,
-    );
+    intervalIdRef.current = setInterval(startCheck, intervalMinutes * 60 * 1000);
 
     // Clean up on unmount
     return () => {
@@ -62,7 +56,7 @@ export function useGmailConnectionCheck(
     isCheckingRef.current = true;
 
     return gmailUtils
-      .checkAndFixInactiveConnections(workspaceId)
+      .checkAndFixInactiveConnections({ workspaceId })
       .then((result) => {
         lastCheckTimeRef.current = new Date();
         lastCheckResultRef.current = result;

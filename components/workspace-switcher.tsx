@@ -197,7 +197,7 @@ export function WorkspaceSwitcher() {
               <Alert variant='destructive'>
                 <AlertTitle>Workspace limit reached</AlertTitle>
                 <AlertDescription>
-                  You've reached the maximum number of workspaces for your current plan.
+                  You&apos;ve reached the maximum number of workspaces for your current plan.
                 </AlertDescription>
               </Alert>
               <Button size='lg' variant='default' asChild className='w-full'>
