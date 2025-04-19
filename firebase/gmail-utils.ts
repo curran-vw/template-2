@@ -58,7 +58,12 @@ export async function saveGmailConnection({
       id: newConnectionRef.id,
       email,
       name,
-      tokens,
+      tokens: {
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token,
+        expires_in: tokens.expires_in,
+        token_type: tokens.token_type,
+      },
       workspaceId,
       userId: user.id,
       isActive: true,
@@ -71,9 +76,6 @@ export async function saveGmailConnection({
     await userRef.update({
       "usage.connectedGmailAccounts": FieldValue.increment(1),
     });
-
-    const refreshResult = await refreshTokenIfNeeded({ connectionId: newConnectionRef.id });
-    console.log("refreshResult", refreshResult);
 
     return {
       success: "Gmail connection saved successfully",
@@ -192,8 +194,12 @@ export async function refreshTokenIfNeeded({ connectionId }: { connectionId: str
 
         // Update tokens in database with the new expiry time
         await connectionRef.update({
-          tokens: newTokens,
-          isActive: true,
+          tokens: {
+            access_token: newTokens.access_token,
+            refresh_token: data.tokens.refresh_token,
+            expires_in: newTokens.expires_in,
+            token_type: newTokens.token_type,
+          },
         });
 
         console.log("Token refreshed successfully");
