@@ -37,10 +37,10 @@ export async function addLog({
       type,
       status,
       details,
-      response,
-      workspaceId,
-      agentId,
-      userId,
+      response: response || "",
+      workspaceId: workspaceId || "",
+      agentId: agentId || "",
+      userId: userId || "",
       timestamp: Timestamp.now(),
     });
 
