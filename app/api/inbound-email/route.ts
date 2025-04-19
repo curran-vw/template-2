@@ -65,13 +65,20 @@ export async function POST(request: NextRequest) {
       });
 
       if (success) {
-        await gmailUtils.sendEmail({
+        const { success, error } = await gmailUtils.sendEmail({
           connectionId: connection.id,
-          to: recipient,
+          to: email.to,
           subject: email.subject,
           body: email.body,
           isTest: false,
         });
+
+        if (success) {
+          return NextResponse.json({ success: true });
+        } else {
+          console.error("Failed to send email:", error);
+          return NextResponse.json({ error: error }, { status: 400 });
+        }
       } else if (error) {
         return NextResponse.json({ error: error }, { status: 400 });
       }
