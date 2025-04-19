@@ -22,6 +22,7 @@ export async function addLog({
   response,
   workspaceId,
   agentId,
+  userId,
 }: {
   type: "api" | "crawl" | "email";
   status: "success" | "failed" | "pending";
@@ -29,9 +30,8 @@ export async function addLog({
   response?: string;
   workspaceId?: string;
   agentId?: string;
+  userId?: string;
 }) {
-  const user = await requireAuth();
-
   try {
     const docRef = await adminDb.collection("logs").add({
       type,
@@ -40,7 +40,7 @@ export async function addLog({
       response,
       workspaceId,
       agentId,
-      userId: user.id,
+      userId,
       timestamp: Timestamp.now(),
     });
 

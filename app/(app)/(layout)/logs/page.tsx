@@ -230,26 +230,18 @@ export default function LogsPage() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <div className='flex items-center'>
-                            {log.status === "success" ? (
-                              <CheckCircle className='mr-1.5 h-3.5 w-3.5 text-success' />
-                            ) : log.status === "pending" ? (
-                              <Clock className='mr-1.5 h-3.5 w-3.5 text-warning' />
-                            ) : (
-                              <AlertCircle className='mr-1.5 h-3.5 w-3.5 text-destructive' />
-                            )}
-                            <span
-                              className={`text-xs font-medium ${
-                                log.status === "success"
-                                  ? "text-success"
-                                  : log.status === "pending"
-                                  ? "text-warning"
-                                  : "text-destructive"
-                              }`}
-                            >
-                              {log.status}
-                            </span>
-                          </div>
+                          <Badge
+                            variant='outline'
+                            className={`uppercase ${
+                              log.status === "success"
+                                ? "border-green-600 text-green-600"
+                                : log.status === "pending"
+                                ? "border-yellow-600 text-yellow-600"
+                                : "border-red-600 text-red-600"
+                            }`}
+                          >
+                            {log.status}
+                          </Badge>
                         </TableCell>
                         <TableCell className='max-w-md truncate'>
                           <TooltipProvider>
@@ -367,19 +359,19 @@ export default function LogsPage() {
                     </Badge>
                     <div className='flex items-center'>
                       {selectedLog.status === "success" ? (
-                        <CheckCircle className='mr-1.5 h-3.5 w-3.5 text-success' />
+                        <CheckCircle className='mr-1.5 h-3.5 w-3.5 text-green-600' />
                       ) : selectedLog.status === "pending" ? (
-                        <Clock className='mr-1.5 h-3.5 w-3.5 text-warning' />
+                        <Clock className='mr-1.5 h-3.5 w-3.5 text-yellow-600' />
                       ) : (
-                        <AlertCircle className='mr-1.5 h-3.5 w-3.5 text-destructive' />
+                        <AlertCircle className='mr-1.5 h-3.5 w-3.5 text-red-600' />
                       )}
                       <span
                         className={`text-xs font-medium ${
                           selectedLog.status === "success"
-                            ? "text-success"
+                            ? "text-green-600"
                             : selectedLog.status === "pending"
-                            ? "text-warning"
-                            : "text-destructive"
+                            ? "text-yellow-600"
+                            : "text-red-600"
                         }`}
                       >
                         {selectedLog.status}

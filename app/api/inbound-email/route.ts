@@ -25,7 +25,6 @@ export async function POST(request: NextRequest) {
     const { agent } = await welcomeAgentUtils.getWelcomeAgent({
       agentId: notificationEmail.agentId,
     });
-
     if (!agent) {
       console.error("Welcome agent not found for:", notificationEmail.agentId);
       return NextResponse.json({ error: "Welcome agent not found" }, { status: 404 });
