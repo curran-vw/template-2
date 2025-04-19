@@ -149,9 +149,12 @@ export async function refreshTokenIfNeeded({ connectionId }: { connectionId: str
 
     const data = connection.data() as GmailConnection;
     const expiryDate = data.tokens.expires_in;
+    const tokenExpiryTime = data.tokens.expires_in * 1000; // Convert to milliseconds
+    const currentTime = Date.now();
 
-    // If token is expired, refresh it
-    if (expiryDate < Date.now()) {
+    // If token is expired or will expire in the next 5 minutes, refresh it
+    if (currentTime >= tokenExpiryTime - 300000) {
+      // 5 minutes buffer
       try {
         const response = await fetch("https://oauth2.googleapis.com/token", {
           method: "POST",
@@ -168,38 +171,37 @@ export async function refreshTokenIfNeeded({ connectionId }: { connectionId: str
 
         const newTokens = await response.json();
 
-        // Check if refresh was successful before updating the database
-        if (!response.ok || !newTokens.access_token) {
+        if (!response.ok) {
+          // If we get an invalid_grant error, the refresh token is no longer valid
+          if (newTokens.error === "invalid_grant") {
+            await connectionRef.update({
+              isActive: false,
+            });
+            return {
+              error: "Gmail authorization has expired. Please reconnect your Gmail account.",
+            };
+          }
           return { error: `Failed to refresh token: ${newTokens.error}` };
         }
 
-        // Update tokens in database
+        if (!newTokens.access_token) {
+          return { error: "No access token received from refresh" };
+        }
+
+        // Update tokens in database with the new expiry time
         await connectionRef.update({
-          tokens: newTokens,
-          isActive: true, // Ensure connection is marked as active
+          tokens: {
+            ...newTokens,
+            expires_in: Math.floor(Date.now() / 1000) + newTokens.expires_in,
+          },
+          isActive: true,
         });
 
         console.log("Token refreshed successfully");
-
         return { accessToken: newTokens.access_token };
       } catch (error) {
         console.error("Error refreshing token:", error);
-
-        // Try to use the existing token if it's not expired
-        if (Date.now() < expiryDate) {
-          return { accessToken: data.tokens.access_token };
-        }
-
-        // Only mark as inactive if we can't use the existing token
-        try {
-          await connectionRef.update({
-            isActive: false,
-          });
-        } catch (updateError) {
-          console.error("Failed to mark connection as inactive:", updateError);
-        }
-
-        return { error: "Gmail authorization has expired. Please reconnect your Gmail account." };
+        return { error: "Failed to refresh token. Please try reconnecting your Gmail account." };
       }
     }
 
