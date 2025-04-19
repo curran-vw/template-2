@@ -72,6 +72,9 @@ export async function saveGmailConnection({
       "usage.connectedGmailAccounts": FieldValue.increment(1),
     });
 
+    const refreshResult = await refreshTokenIfNeeded({ connectionId: newConnectionRef.id });
+    console.log("refreshResult", refreshResult);
+
     return {
       success: "Gmail connection saved successfully",
       connection: connectionData,
@@ -148,7 +151,6 @@ export async function refreshTokenIfNeeded({ connectionId }: { connectionId: str
     }
 
     const data = connection.data() as GmailConnection;
-    const expiryDate = data.tokens.expires_in;
     const tokenExpiryTime = data.tokens.expires_in * 1000; // Convert to milliseconds
     const currentTime = Date.now();
 
@@ -190,10 +192,7 @@ export async function refreshTokenIfNeeded({ connectionId }: { connectionId: str
 
         // Update tokens in database with the new expiry time
         await connectionRef.update({
-          tokens: {
-            ...newTokens,
-            expires_in: Math.floor(Date.now() / 1000) + newTokens.expires_in,
-          },
+          tokens: newTokens,
           isActive: true,
         });
 
