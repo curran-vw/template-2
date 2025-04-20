@@ -1,15 +1,15 @@
 "use server";
 
-import { adminDb, adminAuth } from "../lib/firebase-admin";
+import { adminDb } from "../lib/firebase-admin";
 import { nanoid } from "nanoid";
 import { getAuthenticatedUser } from "./auth-utils";
+
 interface NotificationEmail {
   id: string;
   agentId: string;
   workspaceId: string;
   emailLocalPart: string; // e.g., "agent-123abc"
   createdAt: number;
-  isActive: boolean;
 }
 
 export async function generateNotificationEmail({
@@ -30,7 +30,6 @@ export async function generateNotificationEmail({
       workspaceId,
       emailLocalPart,
       createdAt: Date.now(),
-      isActive: true,
     };
 
     // Save to Firestore
@@ -54,10 +53,7 @@ export async function getNotificationEmail({
   const user = await getAuthenticatedUser();
   try {
     const emailsRef = adminDb.collection("notification_emails");
-    const q = emailsRef
-      .where("agentId", "==", agentId)
-      .where("workspaceId", "==", workspaceId)
-      .where("isActive", "==", true);
+    const q = emailsRef.where("agentId", "==", agentId).where("workspaceId", "==", workspaceId);
 
     const snapshot = await q.get();
 
@@ -89,7 +85,7 @@ export async function getNotificationEmail({
 export async function findByLocalPart({ localPart }: { localPart: string }) {
   try {
     const emailsRef = adminDb.collection("notification_emails");
-    const q = emailsRef.where("emailLocalPart", "==", localPart).where("isActive", "==", true);
+    const q = emailsRef.where("emailLocalPart", "==", localPart);
 
     const snapshot = await q.get();
 

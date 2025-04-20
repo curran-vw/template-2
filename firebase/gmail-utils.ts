@@ -172,9 +172,6 @@ export async function refreshTokenIfNeeded({ connectionId }: { connectionId: str
         if (!response.ok) {
           // If we get an invalid_grant error, the refresh token is no longer valid
           if (newTokens.error === "invalid_grant") {
-            await connectionRef.update({
-              isActive: false,
-            });
             return {
               error: "Gmail authorization has expired. Please reconnect your Gmail account.",
             };
@@ -196,7 +193,6 @@ export async function refreshTokenIfNeeded({ connectionId }: { connectionId: str
           },
         });
 
-        console.log("Token refreshed successfully");
         return { accessToken: newTokens.access_token };
       } catch (error) {
         console.error("Error refreshing token:", error);
@@ -249,7 +245,12 @@ export async function sendEmail({
       `From: "${connection?.name}" <${connection?.email}>`,
       `Subject: ${subject}`,
       "",
-      body,
+      `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; white-space: pre-wrap;">
+        <div style="margin-bottom: 20px; white-space: pre-wrap;">${body}</div>
+        <div style="border-top: 1px solid #eee; padding-top: 15px; margin-top: 30px; font-size: 12px; color: #777;">
+          This email was sent automatically. Please do not reply directly to this message.
+        </div>
+      </div>`,
     ].join("\r\n");
 
     // Encode the email content
@@ -327,10 +328,7 @@ export async function testEmailConnection({ connectionId }: { connectionId: stri
 export async function getConnectionByEmail({ agentId, email }: { agentId: string; email: string }) {
   try {
     const connectionsRef = adminDb.collection("gmail_connections");
-    const q = connectionsRef
-      .where("email", "==", email)
-      .where("isActive", "==", true)
-      .where("agentId", "==", agentId);
+    const q = connectionsRef.where("email", "==", email).where("agentId", "==", agentId);
     const snapshot = await q.get();
 
     if (snapshot.empty) {
@@ -369,50 +367,5 @@ export async function getConnectionById({ connectionId }: { connectionId: string
   } catch (error) {
     console.error("Error getting connection by ID:", error);
     return { error: "An error occurred while retrieving the connection" };
-  }
-}
-
-export async function toggleConnectionStatus({
-  connectionId,
-  isActive,
-}: {
-  connectionId: string;
-  isActive: boolean;
-}) {
-  await requireAuth();
-
-  try {
-    const connectionRef = adminDb.collection("gmail_connections").doc(connectionId);
-
-    // Get current connection data
-    const { connection } = await getConnectionById({ connectionId });
-    if (!connection) {
-      return { error: "No Gmail connection found" };
-    }
-
-    // Update connection with new tokens and mark as active
-    await connectionRef.update({
-      isActive,
-    });
-
-    if (isActive) {
-      // update all gmail connections connected to this agent and workspace and set isActive to false
-      const connectionsRef = adminDb.collection("gmail_connections");
-      const q = connectionsRef
-        .where("workspaceId", "==", connection.workspaceId)
-        .where("userId", "==", connection.userId)
-        .where("email", "!=", connection.email);
-      const snapshot = await q.get();
-      snapshot.docs.forEach(async (doc) => {
-        await doc.ref.update({
-          isActive: false,
-        });
-      });
-    }
-
-    return { success: "Connection reactivated successfully" };
-  } catch (error) {
-    console.error("Error reactivating connection:", error);
-    return { error: "An error occurred while reactivating the connection" };
   }
 }

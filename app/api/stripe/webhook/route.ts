@@ -67,8 +67,6 @@ export async function POST(req: Request) {
         userData.stripeCustomerId = customerId;
         await user.docs[0].ref.update(userData);
 
-        console.log("userData", userData);
-
         break;
       }
 

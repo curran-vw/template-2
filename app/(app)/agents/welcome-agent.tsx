@@ -185,7 +185,6 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
 
   useEffect(() => {
     if (connectedAccountsData && connectedAccountsData.connections) {
-      console.log("Connected accounts data", connectedAccountsData);
       setConnectedAccounts(connectedAccountsData.connections);
       setIsLoadingAccounts(false);
     } else if (connectedAccountsData?.error) {
@@ -603,9 +602,6 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
     }
   }, [workspace?.id, agent?.id]);
 
-  console.log("connectedAccounts", connectedAccounts);
-  console.log("selectedEmailAccount", selectedEmailAccount);
-
   return (
     <TooltipProvider>
       <div className='flex min-h-screen w-full items-center justify-center bg-zinc-900 p-4'>
@@ -834,8 +830,8 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
                         {isGeneratingEmail
                           ? "Generating..."
                           : hasTestedAgent
-                          ? "Regenerate Email Preview"
-                          : "Generate Email Preview"}
+                            ? "Regenerate Email Preview"
+                            : "Generate Email Preview"}
                       </span>
                       <div className='absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 opacity-75 transition-opacity group-hover:opacity-100' />
                     </Button>
