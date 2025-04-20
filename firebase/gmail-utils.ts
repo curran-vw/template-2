@@ -19,15 +19,17 @@ export interface GmailConnection {
   tokens: GmailTokens;
   workspaceId: string;
   userId: string;
-  isActive: boolean;
+  agentId: string;
 }
 
 export async function saveGmailConnection({
+  agentId,
   workspaceId,
   email,
   name,
   tokens,
 }: {
+  agentId: string;
   workspaceId: string;
   email: string;
   name: string;
@@ -36,14 +38,10 @@ export async function saveGmailConnection({
   const user = await requireAuth();
 
   try {
-    // check if the user has reached the limit
-    if (user.limits.connectedGmailAccounts <= user.usage.connectedGmailAccounts) {
-      return { error: "You have reached the limit of connected Gmail accounts" };
-    }
-
     // check if the user has already connected this gmail account
     const connectionRef = await adminDb
       .collection("gmail_connections")
+      .where("agentId", "==", agentId)
       .where("email", "==", email)
       .where("workspaceId", "==", workspaceId)
       .where("userId", "==", user.id)
@@ -65,17 +63,10 @@ export async function saveGmailConnection({
         token_type: tokens.token_type,
       },
       workspaceId,
+      agentId,
       userId: user.id,
-      isActive: true,
     };
-
     await newConnectionRef.set(connectionData);
-
-    // Update user remaining connected gmail accounts
-    const userRef = adminDb.collection("users").doc(user.id);
-    await userRef.update({
-      "usage.connectedGmailAccounts": FieldValue.increment(1),
-    });
 
     return {
       success: "Gmail connection saved successfully",
@@ -87,12 +78,21 @@ export async function saveGmailConnection({
   }
 }
 
-export async function getWorkspaceConnections({ workspaceId }: { workspaceId: string }) {
+export async function getGmailConnections({
+  workspaceId,
+  agentId,
+}: {
+  workspaceId: string;
+  agentId: string;
+}) {
   const user = await requireAuth();
 
   try {
     const connectionsRef = adminDb.collection("gmail_connections");
-    const q = connectionsRef.where("workspaceId", "==", workspaceId).where("userId", "==", user.id);
+    const q = connectionsRef
+      .where("workspaceId", "==", workspaceId)
+      .where("userId", "==", user.id)
+      .where("agentId", "==", agentId);
     const snapshot = await q.get();
 
     const connections = snapshot.docs.map((doc) => ({
@@ -129,12 +129,6 @@ export async function removeConnection({ connectionId }: { connectionId: string 
     }
 
     await connectionRef.delete();
-
-    // Decrement the user's remaining connected gmail accounts
-    const userRef = adminDb.collection("users").doc(user.id);
-    await userRef.update({
-      "usage.connectedGmailAccounts": FieldValue.increment(-1),
-    });
 
     return { success: "Connection removed successfully" };
   } catch (error) {
@@ -330,10 +324,13 @@ export async function testEmailConnection({ connectionId }: { connectionId: stri
   }
 }
 
-export async function getConnectionByEmail({ email }: { email: string }) {
+export async function getConnectionByEmail({ agentId, email }: { agentId: string; email: string }) {
   try {
     const connectionsRef = adminDb.collection("gmail_connections");
-    const q = connectionsRef.where("email", "==", email).where("isActive", "==", true);
+    const q = connectionsRef
+      .where("email", "==", email)
+      .where("isActive", "==", true)
+      .where("agentId", "==", agentId);
     const snapshot = await q.get();
 
     if (snapshot.empty) {
@@ -397,6 +394,21 @@ export async function toggleConnectionStatus({
     await connectionRef.update({
       isActive,
     });
+
+    if (isActive) {
+      // update all gmail connections connected to this agent and workspace and set isActive to false
+      const connectionsRef = adminDb.collection("gmail_connections");
+      const q = connectionsRef
+        .where("workspaceId", "==", connection.workspaceId)
+        .where("userId", "==", connection.userId)
+        .where("email", "!=", connection.email);
+      const snapshot = await q.get();
+      snapshot.docs.forEach(async (doc) => {
+        await doc.ref.update({
+          isActive: false,
+        });
+      });
+    }
 
     return { success: "Connection reactivated successfully" };
   } catch (error) {

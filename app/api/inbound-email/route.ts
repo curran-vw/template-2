@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
     if (agent.configuration?.emailAccount) {
       // Get the Gmail connection for this email account
       const { connection } = await gmailUtils.getConnectionByEmail({
+        agentId: agent.id,
         email: agent.configuration.emailAccount,
       });
       if (!connection) {
@@ -54,6 +55,7 @@ export async function POST(request: NextRequest) {
 
       // Generate the email content
       const { success, error, email } = await generateEmail({
+        senderName: connection.name,
         signupInfo: bodyPlain,
         directive: agent.businessContext?.purpose,
         businessContext: {

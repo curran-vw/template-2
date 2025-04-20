@@ -28,12 +28,8 @@ export async function createWelcomeAgent({
       return { error: "User document does not exist" };
     }
 
-    // Get plan from database
-    const planDoc = await adminDb.collection("plans").doc(user.plan).get();
-    const planData = planDoc.data();
-
     // Check if user has reached their workspace limit
-    if (user.usage.agents >= planData?.agents) {
+    if (user.usage.agents >= user.usage.agents) {
       return { error: "You have reached the maximum number of agents for your plan" };
     }
 
@@ -44,6 +40,17 @@ export async function createWelcomeAgent({
       createdAt: timestamp,
       updatedAt: timestamp,
     };
+
+    if (
+      agent.configuration.emailAccount &&
+      user.usage.connectedAccounts >= user.usage.connectedAccounts
+    ) {
+      return { error: "You have reached the maximum number of connected accounts for your plan" };
+    } else {
+      await userRef.update({
+        "usage.connectedAccounts": FieldValue.increment(1),
+      });
+    }
 
     // Create the agent document
     const docRef = await adminDb.collection("welcome_agents").add(newAgent);
@@ -78,9 +85,22 @@ export async function updateWelcomeAgent({
 
     const docRef = adminDb.collection("welcome_agents").doc(agentId);
     const docSnap = await docRef.get();
-
     if (!docSnap.exists) {
       return { error: "Welcome agent does not exist" };
+    }
+
+    const agent = docSnap.data() as WelcomeAgent;
+    const userRef = adminDb.collection("users").doc(user.id);
+    if (
+      !agent.configuration.emailAccount &&
+      updates.configuration?.emailAccount &&
+      user.usage.connectedAccounts >= user.usage.connectedAccounts
+    ) {
+      return { error: "You have reached the maximum number of connected accounts for your plan" };
+    } else {
+      await userRef.update({
+        "usage.connectedAccounts": FieldValue.increment(1),
+      });
     }
 
     const updates_with_timestamp = {
@@ -217,12 +237,14 @@ export async function getWelcomeAgents({ workspaceId }: { workspaceId: string })
 }
 
 export async function generateEmail({
+  senderName,
   signupInfo,
   directive,
   businessContext,
   workspaceId,
   agentId,
 }: {
+  senderName: string;
   signupInfo: string;
   directive: string;
   businessContext: any;
@@ -389,7 +411,7 @@ export async function generateEmail({
               If there's no specific info at all about the signup, just make it generic 
               (and don't make a note that it is a template). 
               Address the person by first name if available (but just make it general if no name is provided). 
-              Sign off from the name {{placeholder for Gmail account name}}
+              Sign off from the name ${senderName}
 
               Please use the following directive for your email. If it specifies a different length, please adjust accordingly: ${directive}
 

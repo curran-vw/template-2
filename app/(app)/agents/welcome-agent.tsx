@@ -171,19 +171,21 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
     checkForChanges();
   }, [agentName, directive, selectedDirective, businessInfo, checkForChanges]);
 
-  const { data: connectedAccountsData, refetch: refetchConnectedAccounts } = useQuery({
-    queryKey: ["connectedAccounts", workspace?.id],
+  const { data: connectedAccountsData } = useQuery({
+    queryKey: ["connectedAccounts", workspace?.id, agent?.id],
     queryFn: async () => {
       setIsLoadingAccounts(true);
-      return await gmailUtils.getWorkspaceConnections({
+      return await gmailUtils.getGmailConnections({
+        agentId: agent?.id!,
         workspaceId: workspace?.id!,
       });
     },
-    enabled: !!workspace?.id,
+    enabled: !!workspace?.id && !!agent?.id,
   });
 
   useEffect(() => {
     if (connectedAccountsData && connectedAccountsData.connections) {
+      console.log("Connected accounts data", connectedAccountsData);
       setConnectedAccounts(connectedAccountsData.connections);
       setIsLoadingAccounts(false);
     } else if (connectedAccountsData?.error) {
@@ -284,6 +286,9 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
     setIsGeneratingEmail(true);
 
     const { success, email, error } = await generateEmail({
+      senderName:
+        connectedAccounts.find((account) => account.email === selectedEmailAccount)?.name ||
+        "{{placeholder for Gmail account name}}",
       signupInfo,
       directive,
       businessContext: {
@@ -461,6 +466,7 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
     }
 
     router.push("/agents");
+    router.refresh();
   };
 
   // Update the save handlers for the buttons
@@ -477,9 +483,10 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
   };
 
   const handleGmailConnected = async (email: string, name: string, tokens: GmailTokens) => {
-    if (!workspace?.id || !user?.id) return;
+    if (!workspace?.id || !user?.id || !agent?.id) return;
 
     const { success, error, connection } = await gmailUtils.saveGmailConnection({
+      agentId: agent.id,
       workspaceId: workspace.id,
       email,
       name,
@@ -487,18 +494,7 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
     });
 
     if (success) {
-      setConnectedAccounts((prev) => [
-        ...prev,
-        {
-          id: connection.id,
-          email,
-          name,
-          tokens,
-          workspaceId: workspace.id,
-          userId: user.id,
-          isActive: true,
-        },
-      ]);
+      setConnectedAccounts((prev) => [...prev, connection]);
       setSelectedEmailAccount(email);
       toast.success("Success", {
         description: success,
@@ -530,7 +526,7 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
     // }
   };
 
-  const handleRemoveGmailConnection = async (connectionId: string) => {
+  const handleRemoveGmailConnection = async (connectionId: string, email: string) => {
     setIsRemovingAccount(connectionId);
     const { success, error } = await gmailUtils.removeConnection({
       connectionId,
@@ -541,12 +537,16 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
         connections,
         success: connectionsSuccess,
         error: connectionsError,
-      } = await gmailUtils.getWorkspaceConnections({
+      } = await gmailUtils.getGmailConnections({
         workspaceId: workspace!.id,
+        agentId: agent!.id,
       });
 
       if (connectionsSuccess) {
         setConnectedAccounts(connections);
+        if (selectedEmailAccount === email) {
+          setSelectedEmailAccount("");
+        }
       } else {
         toast.error("Error", {
           description: connectionsError,
@@ -602,6 +602,9 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
       setupNotificationEmail();
     }
   }, [workspace?.id, agent?.id]);
+
+  console.log("connectedAccounts", connectedAccounts);
+  console.log("selectedEmailAccount", selectedEmailAccount);
 
   return (
     <TooltipProvider>
@@ -915,43 +918,33 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
                               key={account.id}
                               className={cn(
                                 "flex items-center justify-between rounded-lg border p-3",
-                                account.isActive && "border-primary/50 bg-muted",
+                                account.email === selectedEmailAccount &&
+                                  "border-primary/50 bg-muted",
                               )}
                             >
                               <div className='min-w-0 flex-1 flex items-center gap-3'>
                                 <input
-                                  type='checkbox'
+                                  type='radio'
                                   id={account.id}
                                   name='emailAccount'
-                                  defaultChecked={account.isActive}
+                                  checked={account.email === selectedEmailAccount}
                                   onChange={async () => {
-                                    setIsLoadingAccounts(true);
-                                    const result = await gmailUtils.toggleConnectionStatus({
-                                      connectionId: account.id!,
-                                      isActive: !account.isActive,
-                                    });
-                                    if (result.error) {
-                                      toast.error("Error", { description: result.error });
-                                    } else {
-                                      toast.success("Success", {
-                                        description: "Connection status updated",
-                                      });
-                                      refetchConnectedAccounts();
-                                    }
+                                    setSelectedEmailAccount(account.email);
                                   }}
                                   className='h-4 w-4 border-muted-foreground text-primary'
                                 />
-                                <div className='min-w-0 flex flex-1 flex-col'>
-                                  <label
-                                    htmlFor={account.id}
-                                    className='whitespace-nowrap overflow-hidden text-ellipsis text-sm font-medium'
-                                  >
+
+                                <label
+                                  htmlFor={account.id}
+                                  className='cursor-pointer min-w-0 flex flex-1 flex-col'
+                                >
+                                  <span className='whitespace-nowrap overflow-hidden text-ellipsis text-sm font-medium'>
                                     {account.name}
-                                  </label>
+                                  </span>
                                   <span className='whitespace-nowrap overflow-hidden text-ellipsis text-xs text-muted-foreground'>
                                     {account.email}
                                   </span>
-                                </div>
+                                </label>
                               </div>
                               <div className='flex items-center gap-2'>
                                 <Button
@@ -971,7 +964,9 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
                                 <Button
                                   variant='ghost'
                                   size='sm'
-                                  onClick={() => handleRemoveGmailConnection(account.id!)}
+                                  onClick={() =>
+                                    handleRemoveGmailConnection(account.id!, account.email)
+                                  }
                                   className='text-destructive hover:bg-destructive/10 hover:text-destructive'
                                 >
                                   {isRemovingAccount === account.id ? (

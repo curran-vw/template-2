@@ -94,7 +94,7 @@ export async function getAuthenticatedUser() {
         ...user,
         photoURL: decodedClaim.picture as string,
         displayName: decodedClaim.name as string,
-      },
+      } as User,
     };
   } catch (error) {
     console.error("Error getting authenticated user:", error);
