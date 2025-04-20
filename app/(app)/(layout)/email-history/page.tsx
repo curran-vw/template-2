@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Check,
@@ -12,8 +12,8 @@ import {
   User,
   Building,
   Mail,
-  AlertCircle,
   RefreshCw,
+  AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -34,7 +34,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { EmailRecord } from "@/firebase/email-history-utils";
 
@@ -100,10 +99,8 @@ export default function EmailHistory() {
   const handleApprove = async (emailId: string) => {
     if (!workspace?.id) return;
 
-    const { success, error } = await emailHistoryUtils.updateEmailStatus({
+    const { success, error } = await emailHistoryUtils.updateEmailStatusToSent({
       emailId,
-      status: "sent",
-      workspaceId: workspace.id,
     });
     if (success) {
       toast.success("Success", {
@@ -116,43 +113,23 @@ export default function EmailHistory() {
       });
     }
   };
-  const handleDeny = async (emailId: string) => {
-    if (!workspace?.id) return;
+  // const handleDeny = async (emailId: string) => {
+  //   if (!workspace?.id) return;
 
-    const { success, error } = await emailHistoryUtils.updateEmailStatus({
-      emailId,
-      status: "denied",
-      workspaceId: workspace.id,
-    });
-    if (success) {
-      toast.success("Success", {
-        description: "Email denied successfully",
-      });
-      refetchEmails(); // Refresh the list
-    } else {
-      toast.error("Error", {
-        description: error,
-      });
-    }
-  };
-
-  const getStatusBadge = (status: EmailRecord["status"]) => {
-    const variants = {
-      sent: "success",
-      under_review: "warning",
-      denied: "destructive",
-      failed: "destructive",
-    } as const;
-
-    const labels = {
-      sent: "Sent",
-      under_review: "Pending",
-      denied: "Denied",
-      failed: "Failed",
-    };
-
-    return <Badge variant={variants[status]}>{labels[status]}</Badge>;
-  };
+  //   const { success, error } = await emailHistoryUtils.updateEmailStatusToDenied({
+  //     emailId,
+  //   });
+  //   if (success) {
+  //     toast.success("Success", {
+  //       description: "Email denied successfully",
+  //     });
+  //     refetchEmails(); // Refresh the list
+  //   } else {
+  //     toast.error("Error", {
+  //       description: error,
+  //     });
+  //   }
+  // };
 
   const formatContent = (content: any): string => {
     if (typeof content === "string") return content;
@@ -236,7 +213,7 @@ export default function EmailHistory() {
                 <TableRow className='group hover:bg-muted/50'>
                   <TableCell className='font-medium'>{email.recipientEmail}</TableCell>
                   <TableCell>{email.agentName}</TableCell>
-                  <TableCell>{getStatusBadge(email.status)}</TableCell>
+                  <TableCell>{email.status}</TableCell>
                   <TableCell>
                     <TooltipProvider>
                       <Tooltip>
@@ -258,9 +235,9 @@ export default function EmailHistory() {
                             className='text-success hover:bg-success/10 hover:text-success'
                           >
                             <Check className='h-4 w-4' />
-                            <span className='ml-2'>Approve</span>
+                            <span className='ml-2'>Send</span>
                           </Button>
-                          <Button
+                          {/* <Button
                             onClick={() => handleDeny(email.id)}
                             variant='ghost'
                             size='sm'
@@ -268,7 +245,7 @@ export default function EmailHistory() {
                           >
                             <X className='h-4 w-4' />
                             <span className='ml-2'>Deny</span>
-                          </Button>
+                          </Button> */}
                         </>
                       )}
                       <Button
@@ -383,11 +360,13 @@ export default function EmailHistory() {
                                     className='mt-0 focus-visible:outline-none focus-visible:ring-0'
                                   >
                                     <div className='max-h-[500px] space-y-4 overflow-y-auto rounded-md bg-muted/30 p-4'>
-                                      {/* {email.userInfo ? (
+                                      {email.userInfo ? (
                                         formatMarkdownContent(email.userInfo).map(
                                           (section, index) => (
                                             <div key={index} className='text-sm'>
                                               {section.split("\n").map((line, lineIndex) => {
+                                                const boldText = line.match(/\*\*.*?\*\*/g);
+
                                                 if (boldText) {
                                                   const parts = line.split(/(\*\*.*?\*\*)/);
                                                   return (
@@ -403,6 +382,7 @@ export default function EmailHistory() {
                                                               key={partIndex}
                                                               className='font-semibold'
                                                             >
+                                                              {part.replace(/\*\*/g, "")}
                                                             </span>
                                                           );
                                                         }
@@ -454,7 +434,7 @@ export default function EmailHistory() {
                                             No personal details available
                                           </p>
                                         </div>
-                                      )}*/}
+                                      )}
                                     </div>
                                   </TabsContent>
 
@@ -463,13 +443,15 @@ export default function EmailHistory() {
                                     className='mt-0 focus-visible:outline-none focus-visible:ring-0'
                                   >
                                     <div className='max-h-[500px] space-y-4 overflow-y-auto rounded-md bg-muted/30 p-4'>
-                                      {/* {email.businessInfo ? (
+                                      {email.businessInfo ? (
                                         formatMarkdownContent(email.businessInfo).map(
                                           (section, index) => (
                                             <div key={index} className='text-sm'>
                                               {section.split("\n").map((line, lineIndex) => {
-                                                // Handle bold text
+                                                const boldText = line.match(/\*\*.*?\*\*/g);
+
                                                 if (boldText) {
+                                                  const parts = line.split(/(\*\*.*?\*\*)/);
                                                   return (
                                                     <div key={lineIndex} className='mb-2'>
                                                       {parts.map((part, partIndex) => {
@@ -482,6 +464,7 @@ export default function EmailHistory() {
                                                               key={partIndex}
                                                               className='font-semibold'
                                                             >
+                                                              {part.replace(/\*\*/g, "")}
                                                             </span>
                                                           );
                                                         }
@@ -533,7 +516,7 @@ export default function EmailHistory() {
                                             No business details available
                                           </p>
                                         </div>
-                                      )} */}
+                                      )}
                                     </div>
                                   </TabsContent>
                                 </div>

@@ -5,15 +5,21 @@ import { Timestamp } from "firebase-admin/firestore";
 import * as gmailUtils from "./gmail-utils";
 import { requireAuth } from "@/firebase/auth-utils";
 
-export interface EmailRecord {
+export type EmailRecord = {
   id: string;
   recipientEmail: string;
-  status: "sent" | "under_review" | "denied" | "failed";
-  createdAt: Date;
   agentId: string;
   agentName: string;
+  workspaceId: string;
   subject: string;
-}
+  body: string;
+  status: "under_review" | "sent" | "denied" | "failed";
+  gmailConnectionId: string;
+  userInfo: string;
+  businessInfo: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 export async function getEmailHistory({
   workspaceId,
@@ -49,19 +55,10 @@ export async function getEmailHistory({
     const emails = paginatedDocs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
-      createdAt: doc.data().createdAt.toDate(),
     })) as EmailRecord[];
 
     return {
-      emails: emails.map((email) => ({
-        id: email.id,
-        recipientEmail: email.recipientEmail,
-        status: email.status,
-        createdAt: email.createdAt,
-        agentId: email.agentId,
-        agentName: email.agentName,
-        subject: email.subject,
-      })),
+      emails,
       pagination: {
         currentPage: page,
         totalPages: Math.ceil(totalEmails / pageSize),
@@ -77,16 +74,8 @@ export async function getEmailHistory({
   }
 }
 
-export async function updateEmailStatus({
-  emailId,
-  status,
-  workspaceId,
-}: {
-  emailId: string;
-  status: "sent" | "denied";
-  workspaceId: string;
-}) {
-  const user = await requireAuth();
+export async function updateEmailStatusToSent({ emailId }: { emailId: string }) {
+  await requireAuth();
 
   try {
     const docRef = adminDb.collection("email_history").doc(emailId);
@@ -98,65 +87,37 @@ export async function updateEmailStatus({
 
     const emailData = emailDoc.data();
 
-    // If approving the email, send it
-    if (status === "sent") {
+    if (emailData?.status === "under_review") {
       if (!emailData?.gmailConnectionId) {
         return { error: "No Gmail connection ID found for this email" };
       }
 
-      try {
-        // First verify the Gmail connection is still valid
-        const connection = await gmailUtils.getConnectionById({
-          connectionId: emailData.gmailConnectionId,
-        });
-
-        if (!connection) {
-          return { error: "Gmail connection no longer exists" };
-        }
-
-        const { error: sendError } = await gmailUtils.sendEmail({
-          connectionId: emailData.gmailConnectionId,
-          to: emailData.recipientEmail,
-          subject: emailData.subject,
-          body: emailData.body,
-          isTest: false,
-        });
-
-        if (sendError) {
-          // If sending fails, mark as failed with detailed error message
-          await docRef.update({
-            status: "failed",
-            error: sendError,
-            updatedAt: Timestamp.now(),
-          });
-          return { error: sendError };
-        }
-
-        // Update the status and add sent timestamp
-        await docRef.update({
-          status,
-          updatedAt: Timestamp.now(),
-          sentAt: Timestamp.now(),
-        });
-      } catch (sendError) {
-        console.error("Error sending email:", sendError);
-        // If sending fails, mark as failed with detailed error message
-        await docRef.update({
-          status: "failed",
-          error: sendError instanceof Error ? sendError.message : "Failed to send email",
-          updatedAt: Timestamp.now(),
-        });
-        return { error: "Failed to send email" };
-      }
-    } else {
-      // Just update status for non-send actions (like deny)
-      await docRef.update({
-        status,
-        updatedAt: Timestamp.now(),
+      const connection = await gmailUtils.getConnectionById({
+        connectionId: emailData.gmailConnectionId,
       });
+
+      if (!connection) {
+        return { error: "Gmail connection no longer exists" };
+      }
+
+      const { error: sendError } = await gmailUtils.sendEmail({
+        connectionId: emailData.gmailConnectionId,
+        to: emailData.recipientEmail,
+        subject: emailData.subject,
+        body: emailData.body,
+        isTest: false,
+      });
+
+      await docRef.update({
+        status: "sent",
+        updatedAt: Timestamp.now(),
+        sentAt: Timestamp.now(),
+      });
+
+      return { success: "Email sent successfully" };
     }
 
-    return { success: true };
+    return { success: "Email is already sent" };
   } catch (error) {
     console.error("Error updating email status:", error);
     return { error: "Failed to update email status" };
@@ -164,7 +125,7 @@ export async function updateEmailStatus({
 }
 
 export async function getEmailById({ emailId }: { emailId: string }) {
-  const user = await requireAuth();
+  await requireAuth();
 
   try {
     const emailRef = adminDb.collection("email_history").doc(emailId);
@@ -175,8 +136,9 @@ export async function getEmailById({ emailId }: { emailId: string }) {
         email: {
           id: emailDoc.id,
           ...emailDoc.data(),
-          createdAt: emailDoc.data()?.createdAt.toDate(),
-        } as EmailRecord,
+        } as EmailRecord & {
+          id: string;
+        },
       };
     }
 
@@ -194,9 +156,8 @@ export async function createEmailRecord({
   workspaceId,
   subject,
   body,
-  status = "under_review",
+  status,
   gmailConnectionId,
-  error,
   userInfo,
   businessInfo,
 }: {
@@ -206,14 +167,11 @@ export async function createEmailRecord({
   workspaceId: string;
   subject: string;
   body: string;
-  status?: "sent" | "under_review" | "denied" | "failed";
-  gmailConnectionId?: string;
-  error?: string;
-  userInfo?: string;
-  businessInfo?: string;
+  status: "sent" | "under_review";
+  gmailConnectionId: string;
+  userInfo: string;
+  businessInfo: string;
 }) {
-  const user = await requireAuth();
-
   try {
     // Create base record with required fields
     const emailRecord: Record<string, any> = {
@@ -228,16 +186,8 @@ export async function createEmailRecord({
       updatedAt: Timestamp.now(),
       userInfo,
       businessInfo,
+      gmailConnectionId,
     };
-
-    // Only add optional fields if they are defined
-    if (gmailConnectionId) {
-      emailRecord.gmailConnectionId = gmailConnectionId;
-    }
-
-    if (error) {
-      emailRecord.error = error;
-    }
 
     const docRef = await adminDb.collection("email_history").add(emailRecord);
     return { id: docRef.id, success: true };

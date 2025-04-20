@@ -3,6 +3,7 @@ import * as mailgunUtils from "@/firebase/mailgun-utils";
 import * as welcomeAgentUtils from "@/firebase/welcome-agent-utils";
 import * as gmailUtils from "@/firebase/gmail-utils";
 import { generateEmail } from "@/firebase/welcome-agent-utils";
+import { createEmailRecord } from "@/firebase/email-history-utils";
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,15 +31,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Welcome agent not found" }, { status: 404 });
     }
 
-    // Check if email should be reviewed before sending
-    const shouldReview = agent.configuration?.settings?.reviewBeforeSending;
-    if (shouldReview) {
-      return NextResponse.json({
-        success: true,
-        status: "queued_for_review",
-      });
-    }
-
     // Only send if review is not required
     if (agent.configuration?.emailAccount) {
       // Get the Gmail connection for this email account
@@ -51,6 +43,29 @@ export async function POST(request: NextRequest) {
           { error: `No Gmail connection found for ${agent.configuration.emailAccount}` },
           { status: 400 },
         );
+      }
+
+      // Check if email should be reviewed before sending
+      const shouldReview = agent.configuration?.settings?.reviewBeforeSending;
+
+      if (shouldReview) {
+        await createEmailRecord({
+          recipientEmail: recipient,
+          agentId: agent.id,
+          agentName: agent.name,
+          workspaceId: agent.workspaceId,
+          subject: "Inbound Email",
+          body: bodyPlain,
+          status: "under_review",
+          gmailConnectionId: connection.id,
+          userInfo: bodyPlain,
+          businessInfo: agent.businessContext?.websiteSummary || "",
+        });
+
+        return NextResponse.json({
+          success: true,
+          status: "queued_for_review",
+        });
       }
 
       // Generate the email content
@@ -76,6 +91,18 @@ export async function POST(request: NextRequest) {
         });
 
         if (success) {
+          await createEmailRecord({
+            recipientEmail: email.to,
+            agentId: agent.id,
+            agentName: agent.name,
+            workspaceId: agent.workspaceId,
+            subject: email.subject,
+            body: email.body,
+            status: "sent",
+            gmailConnectionId: connection.id,
+            userInfo: bodyPlain,
+            businessInfo: agent.businessContext?.websiteSummary || "",
+          });
           return NextResponse.json({ success: true });
         } else {
           console.error("Failed to send email:", error);
