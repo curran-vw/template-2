@@ -55,7 +55,7 @@ export function TopBar() {
                     <User className='h-4 w-4 text-muted-foreground' />
                   </div>
                 )}
-                <span className='text-sm font-medium'>{user?.displayName}</span>
+                <span className='max-md:hidden text-sm font-medium'>{user?.displayName}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align='end' className='w-56'>
