@@ -6,10 +6,16 @@ export type User = {
   createdAt: string;
   plan: string;
   usage: {
-    [key: string]: number;
+    agents: number;
+    connectedGmailAccounts: number;
+    emailSent: number;
+    workspaces: number;
   };
   limits: {
-    [key: string]: number;
+    agents: number;
+    connectedGmailAccounts: number;
+    emailSent: number;
+    workspaces: number;
   };
   stripeCustomerId: string | null;
 };

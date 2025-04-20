@@ -60,7 +60,6 @@ import { EmailGenerationDialog } from "@/components/welcome-agent/email-generati
 import { ConnectGmail } from "@/components/welcome-agent/connect-gmail";
 import { OnboardingTooltip } from "@/components/welcome-agent/onboarding-tooltip";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { userUtils } from "@/firebase/user-utils";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { PRESET_DIRECTIVES } from "@/lib/constants";
 import { type WelcomeAgent } from "@/types/welcome-agent";

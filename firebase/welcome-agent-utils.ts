@@ -43,12 +43,12 @@ export async function createWelcomeAgent({
 
     if (
       agent.configuration.emailAccount &&
-      user.usage.connectedAccounts >= user.usage.connectedAccounts
+      user.usage.connectedGmailAccounts >= user.usage.connectedGmailAccounts
     ) {
       return { error: "You have reached the maximum number of connected accounts for your plan" };
     } else {
       await userRef.update({
-        "usage.connectedAccounts": FieldValue.increment(1),
+        "usage.connectedGmailAccounts": FieldValue.increment(1),
       });
     }
 
@@ -94,12 +94,12 @@ export async function updateWelcomeAgent({
     if (
       !agent.configuration.emailAccount &&
       updates.configuration?.emailAccount &&
-      user.usage.connectedAccounts >= user.usage.connectedAccounts
+      user.usage.connectedGmailAccounts >= user.usage.connectedGmailAccounts
     ) {
       return { error: "You have reached the maximum number of connected accounts for your plan" };
     } else {
       await userRef.update({
-        "usage.connectedAccounts": FieldValue.increment(1),
+        "usage.connectedGmailAccounts": FieldValue.increment(1),
       });
     }
 

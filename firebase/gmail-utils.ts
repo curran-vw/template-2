@@ -246,10 +246,7 @@ export async function sendEmail({
       `Subject: ${subject}`,
       "",
       `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; white-space: pre-wrap;">
-        <div style="margin-bottom: 20px; white-space: pre-wrap;">${body}</div>
-        <div style="border-top: 1px solid #eee; padding-top: 15px; margin-top: 30px; font-size: 12px; color: #777;">
-          This email was sent automatically. Please do not reply directly to this message.
-        </div>
+        <div style="margin-bottom: 20px; font-size: 18px;">${body}</div>
       </div>`,
     ].join("\r\n");
 
@@ -282,7 +279,7 @@ export async function sendEmail({
       // Update user email sent number
       const userRef = adminDb.collection("users").doc(connection.userId);
       await userRef.update({
-        remainingEmailSent: FieldValue.increment(-1),
+        "user.usage.emailSent": FieldValue.increment(1),
       });
     }
 
