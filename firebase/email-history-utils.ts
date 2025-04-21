@@ -17,8 +17,8 @@ export type EmailRecord = {
   gmailConnectionId: string;
   userInfo: string;
   businessInfo: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export async function getEmailHistory({
@@ -108,10 +108,13 @@ export async function updateEmailStatusToSent({ emailId }: { emailId: string }) 
         isTest: false,
       });
 
+      if (sendError) {
+        return { error: sendError };
+      }
+      
       await docRef.update({
         status: "sent",
-        updatedAt: Timestamp.now(),
-        sentAt: Timestamp.now(),
+        updatedAt: new Date().toLocaleDateString(),
       });
 
       return { success: "Email sent successfully" };
@@ -182,8 +185,8 @@ export async function createEmailRecord({
       subject,
       body,
       status,
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
+      updatedAt: new Date().toLocaleDateString(),
+      createdAt: new Date().toLocaleDateString(),
       userInfo,
       businessInfo,
       gmailConnectionId,

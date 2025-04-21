@@ -31,18 +31,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useQuery } from "@tanstack/react-query";
 import UpgradePlanModal from "@/components/updgrade-plan-modal";
+
 interface DashboardStats {
   totalEmails: number;
   emailsPending: number;
   totalAgents: number;
-  recentActivity: {
-    type: "email_sent" | "email_pending" | "agent_created" | "email_denied";
-    message: string;
-    timestamp: Date;
-  }[];
+  recentActivity: emailHistoryUtils.EmailRecord[];
 }
 
 function RobotAnimation() {
@@ -126,7 +122,7 @@ function RobotAnimation() {
 export default function Dashboard() {
   const router = useRouter();
   const { workspace } = useWorkspace();
-  const { user, loading: userLoading } = useAuth();
+  const { user } = useAuth();
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -152,37 +148,37 @@ export default function Dashboard() {
       const emailsPending = allEmails?.filter((e) => e.status === "under_review").length || 0;
 
       // Get recent activity (last 5 items)
-      const recentEmails = allEmails
-        ?.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-        .slice(0, 5)
-        .map((email) => {
-          let message = "";
-          let type: "email_sent" | "email_pending" | "agent_created" | "email_denied" =
-            "email_pending";
+      const recentEmails = allEmails;
+      // ?.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      // .slice(0, 5)
+      // .map((email) => {
+      //   let message = "";
+      //   let type: "email_sent" | "email_pending" | "agent_created" | "email_denied" =
+      //     "email_pending";
 
-          switch (email.status) {
-            case "sent":
-              type = "email_sent";
-              message = `Email sent to ${email.recipientEmail}`;
-              break;
-            case "under_review":
-              type = "email_pending";
-              message = `Email pending review for ${email.recipientEmail}`;
-              break;
-            case "denied":
-              type = "email_denied";
-              message = `Email denied for ${email.recipientEmail}`;
-              break;
-            default:
-              message = `Email ${email.status} for ${email.recipientEmail}`;
-          }
+      //   switch (email.status) {
+      //     case "sent":
+      //       type = "email_sent";
+      //       message = `Email sent to ${email.recipientEmail}`;
+      //       break;
+      //     case "under_review":
+      //       type = "email_pending";
+      //       message = `Email pending review for ${email.recipientEmail}`;
+      //       break;
+      //     case "denied":
+      //       type = "email_denied";
+      //       message = `Email denied for ${email.recipientEmail}`;
+      //       break;
+      //     default:
+      //       message = `Email ${email.status} for ${email.recipientEmail}`;
+      //   }
 
-          return {
-            type,
-            message,
-            timestamp: email.createdAt,
-          };
-        });
+      //   return {
+      //     type,
+      //     message,
+      //     timestamp: email.createdAt,
+      //   };
+      // });
 
       // Filter agents to get only published ones
       const activeAgents =
@@ -502,29 +498,26 @@ export default function Dashboard() {
                   className='flex items-center justify-between rounded-md border p-3 transition-colors hover:bg-muted/20'
                 >
                   <div className='flex items-center gap-3'>
-                    {activity.type === "email_sent" ? (
-                      <div className='rounded-full bg-green-100 p-1.5 text-green-600 dark:bg-green-900/30 dark:text-green-400'>
-                        <CheckCircle className='h-4 w-4' />
-                      </div>
-                    ) : activity.type === "email_denied" ? (
-                      <div className='rounded-full bg-red-100 p-1.5 text-red-600 dark:bg-red-900/30 dark:text-red-400'>
-                        <AlertCircle className='h-4 w-4' />
-                      </div>
+                    {activity.status === "sent" ? (
+                      <>
+                        <div className='rounded-full bg-green-100 p-1.5 text-green-600 dark:bg-green-900/30 dark:text-green-400'>
+                          <CheckCircle className='h-4 w-4' />
+                        </div>
+                        <span>
+                          Email sent to {}
+                          {activity.recipientEmail}
+                        </span>
+                      </>
                     ) : (
-                      <div className='rounded-full bg-amber-100 p-1.5 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'>
-                        <Inbox className='h-4 w-4' />
-                      </div>
+                      <>
+                        <div className='rounded-full bg-red-100 p-1.5 text-red-600 dark:bg-red-900/30 dark:text-red-400'>
+                          <AlertCircle className='h-4 w-4' />
+                        </div>
+                        <span>Email is under review for {activity.recipientEmail}</span>
+                      </>
                     )}
-                    <span className='text-sm font-medium'>{activity.message}</span>
                   </div>
-                  <span className='text-xs text-muted-foreground'>
-                    {activity.timestamp.toLocaleString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
+                  <span className='text-xs text-muted-foreground'>{activity.updatedAt}</span>
                 </div>
               ))}
             </div>

@@ -14,6 +14,7 @@ import {
   Mail,
   RefreshCw,
   AlertCircle,
+  Send,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -29,13 +30,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useQuery } from "@tanstack/react-query";
 import { EmailRecord } from "@/firebase/email-history-utils";
+import { LoadingSpinner } from "@/components/loading-spinner";
 
 const formatMarkdownContent = (content: string | undefined) => {
   if (!content) return [];
@@ -96,15 +97,17 @@ export default function EmailHistory() {
     }
   }, [emailsData]);
 
+  const [isSending, setIsSending] = useState(false);
   const handleApprove = async (emailId: string) => {
     if (!workspace?.id) return;
 
+    setIsSending(true);
     const { success, error } = await emailHistoryUtils.updateEmailStatusToSent({
       emailId,
     });
     if (success) {
       toast.success("Success", {
-        description: "Email approved and sent successfully",
+        description: success,
       });
       refetchEmails(); // Refresh the list
     } else {
@@ -112,6 +115,7 @@ export default function EmailHistory() {
         description: error,
       });
     }
+    setIsSending(false);
   };
   // const handleDeny = async (emailId: string) => {
   //   if (!workspace?.id) return;
@@ -218,35 +222,19 @@ export default function EmailHistory() {
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <span>{email.createdAt.toLocaleDateString()}</span>
+                          <span>{email.createdAt}</span>
                         </TooltipTrigger>
-                        <TooltipContent>{email.createdAt.toLocaleTimeString()}</TooltipContent>
+                        <TooltipContent>{email.createdAt}</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                   </TableCell>
                   <TableCell className='text-right'>
                     <div className='flex items-center justify-end gap-2 opacity-80 group-hover:opacity-100'>
                       {email.status === "under_review" && (
-                        <>
-                          <Button
-                            onClick={() => handleApprove(email.id)}
-                            variant='ghost'
-                            size='sm'
-                            className='text-success hover:bg-success/10 hover:text-success'
-                          >
-                            <Check className='h-4 w-4' />
-                            <span className='ml-2'>Send</span>
-                          </Button>
-                          {/* <Button
-                            onClick={() => handleDeny(email.id)}
-                            variant='ghost'
-                            size='sm'
-                            className='text-destructive hover:bg-destructive/10 hover:text-destructive'
-                          >
-                            <X className='h-4 w-4' />
-                            <span className='ml-2'>Deny</span>
-                          </Button> */}
-                        </>
+                        <Button onClick={() => handleApprove(email.id)} className='gap-2'>
+                          {isSending ? <LoadingSpinner /> : <Send />}
+                          <span>Send</span>
+                        </Button>
                       )}
                       <Button
                         onClick={() =>
@@ -297,7 +285,7 @@ export default function EmailHistory() {
                                     </span>
                                   </div>
                                   <div className='border-t pt-4'>
-                                    {/* <div
+                                    <div
                                       className='prose prose-sm max-w-none text-muted-foreground'
                                       dangerouslySetInnerHTML={{
                                         __html: formatContent(email.body)
@@ -316,7 +304,7 @@ export default function EmailHistory() {
                                           })
                                           .join(""),
                                       }}
-                                    /> */}
+                                    />
                                   </div>
                                 </div>
                               </CardContent>
