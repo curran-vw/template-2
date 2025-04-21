@@ -247,7 +247,12 @@ export async function generateEmail({
   senderName: string;
   signupInfo: string;
   directive: string;
-  businessContext: any;
+  businessContext: {
+    website: string;
+    purpose: string;
+    additionalContext?: string;
+    websiteSummary?: string;
+  };
   workspaceId: string;
   agentId?: string;
 }) {
@@ -418,9 +423,9 @@ export async function generateEmail({
               Here's the context on this person: ${userInfo}  
               Here's the context on this person's business: ${businessInfo}   
               Frame it in a way where you saw they just signed up for: ${businessContext.purpose}
-              And lastly, here's the context on my business: ${
-                businessContext.websiteSummary || businessContext.additionalContext || ""
-              }`,
+              And lastly, here's the context on my business: ${businessContext.websiteSummary} ${
+                  businessContext.additionalContext || ""
+                }`,
               },
             ],
           }),

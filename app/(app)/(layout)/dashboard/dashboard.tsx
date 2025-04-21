@@ -148,37 +148,9 @@ export default function Dashboard() {
       const emailsPending = allEmails?.filter((e) => e.status === "under_review").length || 0;
 
       // Get recent activity (last 5 items)
-      const recentEmails = allEmails;
-      // ?.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-      // .slice(0, 5)
-      // .map((email) => {
-      //   let message = "";
-      //   let type: "email_sent" | "email_pending" | "agent_created" | "email_denied" =
-      //     "email_pending";
-
-      //   switch (email.status) {
-      //     case "sent":
-      //       type = "email_sent";
-      //       message = `Email sent to ${email.recipientEmail}`;
-      //       break;
-      //     case "under_review":
-      //       type = "email_pending";
-      //       message = `Email pending review for ${email.recipientEmail}`;
-      //       break;
-      //     case "denied":
-      //       type = "email_denied";
-      //       message = `Email denied for ${email.recipientEmail}`;
-      //       break;
-      //     default:
-      //       message = `Email ${email.status} for ${email.recipientEmail}`;
-      //   }
-
-      //   return {
-      //     type,
-      //     message,
-      //     timestamp: email.createdAt,
-      //   };
-      // });
+      const recentEmails = allEmails
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 5);
 
       // Filter agents to get only published ones
       const activeAgents =
@@ -504,7 +476,7 @@ export default function Dashboard() {
                           <CheckCircle className='h-4 w-4' />
                         </div>
                         <span>
-                          Email sent to {}
+                          Email sent to
                           {activity.recipientEmail}
                         </span>
                       </>

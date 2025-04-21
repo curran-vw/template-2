@@ -13,10 +13,15 @@ export type EmailRecord = {
   workspaceId: string;
   subject: string;
   body: string;
-  status: "under_review" | "sent" | "denied" | "failed";
+  status: "under_review" | "sent" | "failed";
   gmailConnectionId: string;
   userInfo: string;
-  businessInfo: string;
+  businessContext: {
+    website: string;
+    purpose: string;
+    additionalContext?: string;
+    websiteSummary?: string;
+  };
   createdAt: string;
   updatedAt: string;
 };
@@ -111,7 +116,7 @@ export async function updateEmailStatusToSent({ emailId }: { emailId: string }) 
       if (sendError) {
         return { error: sendError };
       }
-      
+
       await docRef.update({
         status: "sent",
         updatedAt: new Date().toLocaleDateString(),
@@ -162,7 +167,8 @@ export async function createEmailRecord({
   status,
   gmailConnectionId,
   userInfo,
-  businessInfo,
+  businessContext,
+  error,
 }: {
   recipientEmail: string;
   agentId: string;
@@ -170,10 +176,16 @@ export async function createEmailRecord({
   workspaceId: string;
   subject: string;
   body: string;
-  status: "sent" | "under_review";
+  status: "sent" | "under_review" | "failed";
   gmailConnectionId: string;
   userInfo: string;
-  businessInfo: string;
+  businessContext?: {
+    website: string;
+    purpose: string;
+    additionalContext?: string;
+    websiteSummary?: string;
+  };
+  error?: string;
 }) {
   try {
     // Create base record with required fields
@@ -188,8 +200,9 @@ export async function createEmailRecord({
       updatedAt: new Date().toLocaleDateString(),
       createdAt: new Date().toLocaleDateString(),
       userInfo,
-      businessInfo,
+      businessContext: businessContext || {},
       gmailConnectionId,
+      error: error || "",
     };
 
     const docRef = await adminDb.collection("email_history").add(emailRecord);

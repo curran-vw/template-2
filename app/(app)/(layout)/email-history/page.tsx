@@ -38,18 +38,6 @@ import { useQuery } from "@tanstack/react-query";
 import { EmailRecord } from "@/firebase/email-history-utils";
 import { LoadingSpinner } from "@/components/loading-spinner";
 
-const formatMarkdownContent = (content: string | undefined) => {
-  if (!content) return [];
-
-  return content
-    .split("\n\n")
-    .filter((section) => section.trim())
-    .map((section) => {
-      // Keep bold markers for now - we'll handle them in the render
-      return section.replace(/\[[\d\]]/g, "").trim(); // Remove reference numbers [1], [2], etc.
-    });
-};
-
 export default function EmailHistory() {
   const { workspace } = useWorkspace();
   const [emails, setEmails] = useState<EmailRecord[]>([]);
@@ -82,6 +70,7 @@ export default function EmailHistory() {
     },
     enabled: !!workspace?.id,
   });
+
   useEffect(() => {
     if (emailsData) {
       setEmails(emailsData.emails || []);
@@ -116,35 +105,6 @@ export default function EmailHistory() {
       });
     }
     setIsSending(false);
-  };
-  // const handleDeny = async (emailId: string) => {
-  //   if (!workspace?.id) return;
-
-  //   const { success, error } = await emailHistoryUtils.updateEmailStatusToDenied({
-  //     emailId,
-  //   });
-  //   if (success) {
-  //     toast.success("Success", {
-  //       description: "Email denied successfully",
-  //     });
-  //     refetchEmails(); // Refresh the list
-  //   } else {
-  //     toast.error("Error", {
-  //       description: error,
-  //     });
-  //   }
-  // };
-
-  const formatContent = (content: any): string => {
-    if (typeof content === "string") return content;
-    if (typeof content === "object") {
-      try {
-        return JSON.stringify(content, null, 2);
-      } catch {
-        return String(content);
-      }
-    }
-    return String(content);
   };
 
   // Add pagination handlers
@@ -280,31 +240,12 @@ export default function EmailHistory() {
                                     <span className='text-sm font-medium text-muted-foreground w-20'>
                                       Subject:
                                     </span>
-                                    <span className='text-sm font-medium'>
-                                      {formatContent(email.subject)}
-                                    </span>
+                                    <span className='text-sm font-medium'>{email.subject}</span>
                                   </div>
                                   <div className='border-t pt-4'>
-                                    <div
-                                      className='prose prose-sm max-w-none text-muted-foreground'
-                                      dangerouslySetInnerHTML={{
-                                        __html: formatContent(email.body)
-                                          .replace(/<[^>]*>/g, "")
-                                          .split("\n")
-                                          .filter((line) => line.trim())
-                                          .map((line) => {
-                                            if (
-                                              line.match(
-                                                /^(Hey|Hi|Dear|Hello|Best|Regards|Sincerely|Thanks|Thank you)/,
-                                              )
-                                            ) {
-                                              return `<div class="mb-4">${line}</div>`;
-                                            }
-                                            return `<div class="mb-4">${line}</div>`;
-                                          })
-                                          .join(""),
-                                      }}
-                                    />
+                                    <div className='prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap'>
+                                      {email.body}
+                                    </div>
                                   </div>
                                 </div>
                               </CardContent>
@@ -347,82 +288,8 @@ export default function EmailHistory() {
                                     value='personal'
                                     className='mt-0 focus-visible:outline-none focus-visible:ring-0'
                                   >
-                                    <div className='max-h-[500px] space-y-4 overflow-y-auto rounded-md bg-muted/30 p-4'>
-                                      {email.userInfo ? (
-                                        formatMarkdownContent(email.userInfo).map(
-                                          (section, index) => (
-                                            <div key={index} className='text-sm'>
-                                              {section.split("\n").map((line, lineIndex) => {
-                                                const boldText = line.match(/\*\*.*?\*\*/g);
-
-                                                if (boldText) {
-                                                  const parts = line.split(/(\*\*.*?\*\*)/);
-                                                  return (
-                                                    <div key={lineIndex} className='mb-2'>
-                                                      {parts.map((part, partIndex) => {
-                                                        if (
-                                                          part.startsWith("**") &&
-                                                          part.endsWith("**")
-                                                        ) {
-                                                          // It's bold text
-                                                          return (
-                                                            <span
-                                                              key={partIndex}
-                                                              className='font-semibold'
-                                                            >
-                                                              {part.replace(/\*\*/g, "")}
-                                                            </span>
-                                                          );
-                                                        }
-                                                        return <span key={partIndex}>{part}</span>;
-                                                      })}
-                                                    </div>
-                                                  );
-                                                }
-
-                                                // Handle lists
-                                                if (line.startsWith("- ")) {
-                                                  return (
-                                                    <div key={lineIndex} className='mb-1 ml-4 flex'>
-                                                      <span className='mr-2'>•</span>
-                                                      <span>{line.substring(2)}</span>
-                                                    </div>
-                                                  );
-                                                }
-
-                                                // Handle headers (lines ending with :)
-                                                if (line.endsWith(":")) {
-                                                  return (
-                                                    <h4
-                                                      key={lineIndex}
-                                                      className='mb-2 mt-4 font-medium'
-                                                    >
-                                                      {line}
-                                                    </h4>
-                                                  );
-                                                }
-
-                                                // Regular text
-                                                return (
-                                                  <div
-                                                    key={lineIndex}
-                                                    className='mb-2 text-muted-foreground'
-                                                  >
-                                                    {line}
-                                                  </div>
-                                                );
-                                              })}
-                                            </div>
-                                          ),
-                                        )
-                                      ) : (
-                                        <div className='flex flex-col items-center justify-center py-6 text-center'>
-                                          <AlertCircle className='h-8 w-8 text-muted-foreground/60 mb-2' />
-                                          <p className='text-sm text-muted-foreground'>
-                                            No personal details available
-                                          </p>
-                                        </div>
-                                      )}
+                                    <div className='max-h-[500px] whitespace-pre-wrap space-y-4 overflow-y-auto rounded-md bg-muted/30 p-4'>
+                                      {email.userInfo}
                                     </div>
                                   </TabsContent>
 
@@ -431,72 +298,29 @@ export default function EmailHistory() {
                                     className='mt-0 focus-visible:outline-none focus-visible:ring-0'
                                   >
                                     <div className='max-h-[500px] space-y-4 overflow-y-auto rounded-md bg-muted/30 p-4'>
-                                      {email.businessInfo ? (
-                                        formatMarkdownContent(email.businessInfo).map(
-                                          (section, index) => (
-                                            <div key={index} className='text-sm'>
-                                              {section.split("\n").map((line, lineIndex) => {
-                                                const boldText = line.match(/\*\*.*?\*\*/g);
-
-                                                if (boldText) {
-                                                  const parts = line.split(/(\*\*.*?\*\*)/);
-                                                  return (
-                                                    <div key={lineIndex} className='mb-2'>
-                                                      {parts.map((part, partIndex) => {
-                                                        if (
-                                                          part.startsWith("**") &&
-                                                          part.endsWith("**")
-                                                        ) {
-                                                          return (
-                                                            <span
-                                                              key={partIndex}
-                                                              className='font-semibold'
-                                                            >
-                                                              {part.replace(/\*\*/g, "")}
-                                                            </span>
-                                                          );
-                                                        }
-                                                        return <span key={partIndex}>{part}</span>;
-                                                      })}
-                                                    </div>
-                                                  );
-                                                }
-
-                                                // Handle lists
-                                                if (line.startsWith("- ")) {
-                                                  return (
-                                                    <div key={lineIndex} className='mb-1 ml-4 flex'>
-                                                      <span className='mr-2'>•</span>
-                                                      <span>{line.substring(2)}</span>
-                                                    </div>
-                                                  );
-                                                }
-
-                                                // Handle headers
-                                                if (line.endsWith(":")) {
-                                                  return (
-                                                    <h4
-                                                      key={lineIndex}
-                                                      className='mb-2 mt-4 font-medium'
-                                                    >
-                                                      {line}
-                                                    </h4>
-                                                  );
-                                                }
-
-                                                // Regular text
-                                                return (
-                                                  <div
-                                                    key={lineIndex}
-                                                    className='mb-2 text-muted-foreground'
-                                                  >
-                                                    {line}
-                                                  </div>
-                                                );
-                                              })}
-                                            </div>
-                                          ),
-                                        )
+                                      {email.businessContext ? (
+                                        <div className='prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap'>
+                                          <p>
+                                            <strong>Website:</strong>{" "}
+                                            {email.businessContext.website}
+                                          </p>
+                                          <p>
+                                            <strong>Purpose:</strong>{" "}
+                                            {email.businessContext.purpose}
+                                          </p>
+                                          {email.businessContext.additionalContext && (
+                                            <p>
+                                              <strong>Additional Context:</strong>{" "}
+                                              {email.businessContext.additionalContext}
+                                            </p>
+                                          )}
+                                          {email.businessContext.websiteSummary && (
+                                            <p>
+                                              <strong>Website Summary:</strong>{" "}
+                                              {email.businessContext.websiteSummary}
+                                            </p>
+                                          )}
+                                        </div>
                                       ) : (
                                         <div className='flex flex-col items-center justify-center py-6 text-center'>
                                           <AlertCircle className='h-8 w-8 text-muted-foreground/60 mb-2' />

@@ -90,7 +90,7 @@ export async function findByLocalPart({ localPart }: { localPart: string }) {
     const snapshot = await q.get();
 
     if (snapshot.empty) {
-      return { notificationEmail: null };
+      return { notificationEmail: null, error: "Notification email not found" };
     }
 
     const notificationEmail = {
@@ -98,7 +98,7 @@ export async function findByLocalPart({ localPart }: { localPart: string }) {
       ...snapshot.docs[0].data(),
     } as NotificationEmail;
 
-    return { notificationEmail };
+    return { notificationEmail, success: "Notification email found successfully" };
   } catch (error) {
     console.error("Error finding notification email by local part:", error);
     return { error: "Failed to find notification email" };
