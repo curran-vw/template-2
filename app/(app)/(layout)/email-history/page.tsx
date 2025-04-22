@@ -242,6 +242,15 @@ export default function EmailHistory() {
                                     </span>
                                     <span className='text-sm font-medium'>{email.subject}</span>
                                   </div>
+                                  {email.error && (
+                                    <div className='flex items-start mt-2 p-3 rounded-md bg-destructive/10 border border-destructive/20'>
+                                      <AlertCircle className='h-5 w-5 text-destructive mr-2 mt-0.5 flex-shrink-0' />
+                                      <div className='space-y-1'>
+                                        <p className='text-sm font-medium text-destructive'>Error</p>
+                                        <p className='text-sm text-destructive/90'>{email.error}</p>
+                                      </div>
+                                    </div>
+                                  )}
                                   <div className='border-t pt-4'>
                                     <div className='prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap'>
                                       {email.body}

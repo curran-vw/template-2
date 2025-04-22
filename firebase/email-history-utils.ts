@@ -14,6 +14,7 @@ export type EmailRecord = {
   subject: string;
   body: string;
   status: "under_review" | "sent" | "failed";
+  error?: string;
   gmailConnectionId: string;
   userInfo: string;
   businessContext: {
