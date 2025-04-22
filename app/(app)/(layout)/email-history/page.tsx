@@ -182,9 +182,9 @@ export default function EmailHistory() {
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <span>{email.createdAt}</span>
+                          <span>{email.createdAt.toDate().toLocaleString()}</span>
                         </TooltipTrigger>
-                        <TooltipContent>{email.createdAt}</TooltipContent>
+                        <TooltipContent>{email.createdAt.toDate().toLocaleString()}</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                   </TableCell>

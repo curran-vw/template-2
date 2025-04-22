@@ -415,7 +415,6 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
             },
           }
         : {}),
-      lastModified: Date.now(),
     };
 
     // Remove any undefined or null values recursively
@@ -829,8 +828,8 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
                         {isGeneratingEmail
                           ? "Generating..."
                           : hasTestedAgent
-                            ? "Regenerate Email Preview"
-                            : "Generate Email Preview"}
+                          ? "Regenerate Email Preview"
+                          : "Generate Email Preview"}
                       </span>
                       <div className='absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 opacity-75 transition-opacity group-hover:opacity-100' />
                     </Button>

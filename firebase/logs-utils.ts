@@ -1,12 +1,12 @@
 "use server";
 
 import { requireAuth } from "@/firebase/auth-utils";
-import { adminDb, adminAuth } from "../lib/firebase-admin";
+import { adminDb } from "../lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
 
 export interface LogRecord {
   id: string;
-  timestamp: Date;
+  timestamp: Timestamp;
   type: "api" | "crawl" | "email";
   status: "success" | "failed" | "pending";
   details: string;
@@ -96,7 +96,6 @@ export async function getLogs({
     const logs = paginatedDocs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
-      timestamp: doc.data().timestamp.toDate(),
     })) as LogRecord[];
 
     return {

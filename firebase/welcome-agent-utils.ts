@@ -1,7 +1,7 @@
 "use server";
 
 import { adminDb } from "../lib/firebase-admin";
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { WelcomeAgent } from "../types/welcome-agent";
 import { requireAuth } from "@/firebase/auth-utils";
 import { addLog } from "@/firebase/logs-utils";
@@ -33,7 +33,7 @@ export async function createWelcomeAgent({
       return { error: "You have reached the maximum number of agents for your plan" };
     }
 
-    const timestamp = Date.now();
+    const timestamp = Timestamp.now();
     const newAgent = {
       ...agent,
       workspaceId,
@@ -105,7 +105,7 @@ export async function updateWelcomeAgent({
 
     const updates_with_timestamp = {
       ...updates,
-      updatedAt: Date.now(),
+      updatedAt: Timestamp.now(),
     };
 
     await docRef.update(updates_with_timestamp);

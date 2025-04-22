@@ -149,7 +149,7 @@ export default function Dashboard() {
 
       // Get recent activity (last 5 items)
       const recentEmails = allEmails
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .sort((a, b) => b.createdAt.toDate().getTime() - a.createdAt.toDate().getTime())
         .slice(0, 5);
 
       // Filter agents to get only published ones
@@ -489,7 +489,9 @@ export default function Dashboard() {
                       </>
                     )}
                   </div>
-                  <span className='text-xs text-muted-foreground'>{activity.updatedAt}</span>
+                  <span className='text-xs text-muted-foreground'>
+                    {activity.updatedAt.toDate().toLocaleString()}
+                  </span>
                 </div>
               ))}
             </div>

@@ -1,6 +1,6 @@
 "use server";
 
-import { adminDb, adminAuth } from "../lib/firebase-admin";
+import { adminDb } from "../lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
 import * as gmailUtils from "./gmail-utils";
 import { requireAuth } from "@/firebase/auth-utils";
@@ -22,8 +22,8 @@ export type EmailRecord = {
     additionalContext?: string;
     websiteSummary?: string;
   };
-  createdAt: string;
-  updatedAt: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 };
 
 export async function getEmailHistory({
@@ -119,7 +119,7 @@ export async function updateEmailStatusToSent({ emailId }: { emailId: string }) 
 
       await docRef.update({
         status: "sent",
-        updatedAt: new Date().toLocaleDateString(),
+        updatedAt: Timestamp.now(),
       });
 
       return { success: "Email sent successfully" };
@@ -197,8 +197,8 @@ export async function createEmailRecord({
       subject,
       body,
       status,
-      updatedAt: new Date().toLocaleDateString(),
-      createdAt: new Date().toLocaleDateString(),
+      updatedAt: Timestamp.now(),
+      createdAt: Timestamp.now(),
       userInfo,
       businessContext: businessContext || {},
       gmailConnectionId,

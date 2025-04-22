@@ -112,16 +112,3 @@ export async function requireAuth() {
 
   return user;
 }
-
-// Set active workspace cookie
-export async function setActiveWorkspaceCookie(workspaceId: string) {
-  cookies().set("activeWorkspace", workspaceId, {
-    maxAge: 60 * 60 * 24 * 30,
-    path: "/",
-  });
-}
-
-// Get active workspace cookie
-export async function getActiveWorkspaceCookie() {
-  return cookies().get("activeWorkspace")?.value;
-}

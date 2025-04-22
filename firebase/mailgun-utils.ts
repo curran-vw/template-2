@@ -3,13 +3,14 @@
 import { adminDb } from "../lib/firebase-admin";
 import { nanoid } from "nanoid";
 import { getAuthenticatedUser } from "./auth-utils";
+import { Timestamp } from "firebase-admin/firestore";
 
 interface NotificationEmail {
   id: string;
   agentId: string;
   workspaceId: string;
   emailLocalPart: string; // e.g., "agent-123abc"
-  createdAt: number;
+  createdAt: Timestamp;
 }
 
 export async function generateNotificationEmail({
@@ -29,7 +30,7 @@ export async function generateNotificationEmail({
       agentId,
       workspaceId,
       emailLocalPart,
-      createdAt: Date.now(),
+      createdAt: Timestamp.now(),
     };
 
     // Save to Firestore
