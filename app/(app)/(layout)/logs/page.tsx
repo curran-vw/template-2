@@ -204,7 +204,7 @@ export default function LogsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Timestamp</TableHead>
+                    <TableHead>Created At</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className='w-1/3'>Details</TableHead>
@@ -222,7 +222,7 @@ export default function LogsPage() {
                     logs.map((log) => (
                       <TableRow key={log.id}>
                         <TableCell className='whitespace-nowrap'>
-                          {log.timestamp.toLocaleString()}
+                          {new Date(log.createdAt).toLocaleString()}
                         </TableCell>
                         <TableCell>
                           <Badge variant='outline' className='uppercase'>
@@ -236,8 +236,8 @@ export default function LogsPage() {
                               log.status === "success"
                                 ? "border-green-600 text-green-600"
                                 : log.status === "pending"
-                                ? "border-yellow-600 text-yellow-600"
-                                : "border-red-600 text-red-600"
+                                  ? "border-yellow-600 text-yellow-600"
+                                  : "border-red-600 text-red-600"
                             }`}
                           >
                             {log.status}
@@ -351,7 +351,7 @@ export default function LogsPage() {
               {selectedLog && (
                 <div className='mt-1 flex flex-col gap-1'>
                   <div className='text-sm text-muted-foreground'>
-                    {selectedLog.timestamp.toLocaleString()}
+                    {selectedLog.createdAt.toLocaleString()}
                   </div>
                   <div className='flex items-center gap-2'>
                     <Badge variant='outline' className='capitalize'>
@@ -370,8 +370,8 @@ export default function LogsPage() {
                           selectedLog.status === "success"
                             ? "text-green-600"
                             : selectedLog.status === "pending"
-                            ? "text-yellow-600"
-                            : "text-red-600"
+                              ? "text-yellow-600"
+                              : "text-red-600"
                         }`}
                       >
                         {selectedLog.status}

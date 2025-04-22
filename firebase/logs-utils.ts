@@ -6,7 +6,7 @@ import { Timestamp } from "firebase-admin/firestore";
 
 export interface LogRecord {
   id: string;
-  timestamp: Timestamp;
+  createdAt: Date;
   type: "api" | "crawl" | "email";
   status: "success" | "failed" | "pending";
   details: string;
@@ -41,7 +41,7 @@ export async function addLog({
       workspaceId: workspaceId || "",
       agentId: agentId || "",
       userId: userId || "",
-      timestamp: Timestamp.now(),
+      createdAt: Timestamp.now(),
     });
 
     return { id: docRef.id };
@@ -96,6 +96,7 @@ export async function getLogs({
     const logs = paginatedDocs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
+      createdAt: doc.data().createdAt.toDate(),
     })) as LogRecord[];
 
     return {

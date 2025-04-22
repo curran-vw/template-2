@@ -1,9 +1,9 @@
 "use server";
 
 import { adminDb } from "../lib/firebase-admin";
-import { Timestamp } from "firebase-admin/firestore";
 import * as gmailUtils from "./gmail-utils";
 import { requireAuth } from "@/firebase/auth-utils";
+import { Timestamp } from "firebase-admin/firestore";
 
 export type EmailRecord = {
   id: string;
@@ -23,8 +23,8 @@ export type EmailRecord = {
     additionalContext?: string;
     websiteSummary?: string;
   };
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 export async function getEmailHistory({
@@ -61,6 +61,8 @@ export async function getEmailHistory({
     const emails = paginatedDocs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
+      createdAt: doc.data().createdAt.toDate(),
+      updatedAt: doc.data().updatedAt.toDate(),
     })) as EmailRecord[];
 
     return {
@@ -120,7 +122,7 @@ export async function updateEmailStatusToSent({ emailId }: { emailId: string }) 
 
       await docRef.update({
         status: "sent",
-        updatedAt: Timestamp.now(),
+        updatedAt: new Date().toISOString(),
       });
 
       return { success: "Email sent successfully" };

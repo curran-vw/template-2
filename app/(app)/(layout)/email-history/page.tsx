@@ -182,9 +182,9 @@ export default function EmailHistory() {
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <span>{email.createdAt.toDate().toLocaleString()}</span>
+                          <span>{email.createdAt.toLocaleString()}</span>
                         </TooltipTrigger>
-                        <TooltipContent>{email.createdAt.toDate().toLocaleString()}</TooltipContent>
+                        <TooltipContent>{email.createdAt.toLocaleString()}</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                   </TableCell>
@@ -246,7 +246,9 @@ export default function EmailHistory() {
                                     <div className='flex items-start mt-2 p-3 rounded-md bg-destructive/10 border border-destructive/20'>
                                       <AlertCircle className='h-5 w-5 text-destructive mr-2 mt-0.5 flex-shrink-0' />
                                       <div className='space-y-1'>
-                                        <p className='text-sm font-medium text-destructive'>Error</p>
+                                        <p className='text-sm font-medium text-destructive'>
+                                          Error
+                                        </p>
                                         <p className='text-sm text-destructive/90'>{email.error}</p>
                                       </div>
                                     </div>
