@@ -97,28 +97,22 @@ export async function getAuthenticatedUser() {
       );
 
       if (daysSinceReset >= 30) {
-        // Reset all usage counters
         const updatedUser = {
           ...user,
           usage: {
+            ...user.usage,
             emailSent: 0,
-            agents: 0,
-            connectedGmailAccounts: 0,
-            workspaces: 0,
           },
           lastUsageReset: now.toISOString(),
         };
 
-        // Update only the usage counters and reset date
         await adminDb
           .collection("users")
           .doc(userId)
           .update({
             usage: {
+              ...user.usage,
               emailSent: 0,
-              agents: 0,
-              connectedGmailAccounts: 0,
-              workspaces: 0,
             },
             lastUsageReset: now.toISOString(),
           });
