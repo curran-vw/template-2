@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
 
   return {
     title: agent.name,
-    description: `Manage and configure your ${agent.name} Welcome Agent for automated welcome emails`,
+    description: `${agent.name} - Automated welcome email campaign for ${agent.businessContext.purpose}`,
   };
 }
 

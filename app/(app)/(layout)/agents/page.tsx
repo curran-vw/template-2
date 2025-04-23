@@ -7,6 +7,6 @@ export const metadata: Metadata = {
     "Manage your Welcome Agents - Create and configure automated welcome email campaigns",
 };
 
-export default async function AgentsPage() {
+export default function AgentsPage() {
   return <Agents />;
 }

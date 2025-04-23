@@ -10,6 +10,17 @@ export const metadata: Metadata = {
   title: "Pricing",
   description:
     "Choose the perfect plan for your welcome email automation needs - from free to enterprise solutions",
+  openGraph: {
+    title: "Welcome Agent Pricing",
+    description: "Find the perfect plan for your welcome email automation needs",
+    images: ["/wa-favicon.png"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Welcome Agent Pricing",
+    description: "Find the perfect plan for your welcome email automation needs",
+    images: ["/wa-favicon.png"],
+  },
 };
 
 export default function PricingPage() {

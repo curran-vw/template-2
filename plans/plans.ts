@@ -61,7 +61,6 @@ export const PLANS = {
       workspaces: 5,
     },
     features: [
-      "Everything in Free",
       "5 welcome agents",
       "5 connected gmail accounts",
       "50 emails per month",
@@ -86,7 +85,6 @@ export const PLANS = {
       workspaces: 10,
     },
     features: [
-      "Everything in Pro",
       "10 welcome agents",
       "10 connected gmail accounts",
       "100 emails per month",

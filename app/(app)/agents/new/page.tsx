@@ -1,4 +1,4 @@
-import WelcomeAgent from "../welcome-agent";
+import NewWelcomeAgent from "../welcome-agent";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -6,6 +6,6 @@ export const metadata: Metadata = {
   description: "Create a new Welcome Agent to automate your welcome email campaigns",
 };
 
-export default async function NewWelcomeAgentPage() {
-  return <WelcomeAgent />;
+export default function NewAgentPage() {
+  return <NewWelcomeAgent />;
 }

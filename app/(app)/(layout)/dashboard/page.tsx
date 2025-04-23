@@ -6,6 +6,6 @@ export const metadata: Metadata = {
   description: "Welcome Agent Dashboard - Manage your welcome email campaigns",
 };
 
-export default async function DashboardPage() {
+export default function DashboardPage() {
   return <Dashboard />;
 }

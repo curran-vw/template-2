@@ -5,6 +5,7 @@ import { Toaster } from "sonner";
 import { WorkspaceProvider } from "@/contexts/workspace-context";
 import type { Metadata } from "next";
 import { TanstackProvider } from "@/lib/tanstack-provider";
+
 const dmSans = DM_Sans({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
@@ -22,6 +23,30 @@ export const metadata: Metadata = {
     shortcut: "/wa-favicon.png",
     apple: "/wa-favicon.png",
   },
+  openGraph: {
+    title: "Welcome Agent",
+    description: "Automate your welcome email campaigns",
+    url: "https://welcomeagent.ai",
+    siteName: "Welcome Agent",
+    images: [
+      {
+        url: "/wa-favicon.png",
+        width: 1200,
+        height: 630,
+        alt: "Welcome Agent Logo",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Welcome Agent",
+    description: "Automate your welcome email campaigns",
+    images: ["/wa-favicon.png"],
+    creator: "@welcomeagent",
+  },
+  metadataBase: new URL("https://welcomeagent.ai"),
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
