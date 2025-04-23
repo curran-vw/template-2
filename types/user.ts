@@ -18,4 +18,5 @@ export type User = {
     workspaces: number;
   };
   stripeCustomerId: string | null;
+  lastUsageReset: string;
 };

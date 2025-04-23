@@ -74,6 +74,7 @@ export async function getAuthenticatedUser() {
         },
         stripeCustomerId: null,
         createdAt: new Date().toISOString(),
+        lastUsageReset: new Date().toISOString(), // Initial reset date
       };
 
       await adminDb.collection("users").doc(userId).set(newUser);
@@ -87,6 +88,43 @@ export async function getAuthenticatedUser() {
       user = newUser;
     } else {
       user = userDoc.data();
+
+      // Check if a month (30 days) has passed since the last reset
+      const lastReset = new Date(user.lastUsageReset);
+      const now = new Date();
+      const daysSinceReset = Math.floor(
+        (now.getTime() - lastReset.getTime()) / (1000 * 60 * 60 * 24),
+      );
+
+      if (daysSinceReset >= 30) {
+        // Reset all usage counters
+        const updatedUser = {
+          ...user,
+          usage: {
+            emailSent: 0,
+            agents: 0,
+            connectedGmailAccounts: 0,
+            workspaces: 0,
+          },
+          lastUsageReset: now.toISOString(),
+        };
+
+        // Update only the usage counters and reset date
+        await adminDb
+          .collection("users")
+          .doc(userId)
+          .update({
+            usage: {
+              emailSent: 0,
+              agents: 0,
+              connectedGmailAccounts: 0,
+              workspaces: 0,
+            },
+            lastUsageReset: now.toISOString(),
+          });
+
+        user = updatedUser;
+      }
     }
 
     return {
