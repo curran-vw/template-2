@@ -147,8 +147,8 @@ export async function getEmailById({ emailId }: { emailId: string }) {
         email: {
           id: emailDoc.id,
           ...emailDoc.data(),
-        } as EmailRecord & {
-          id: string;
+          createdAt: emailDoc.data()?.createdAt?.toDate(),
+          updatedAt: emailDoc.data()?.updatedAt?.toDate(),
         },
       };
     }

@@ -4,6 +4,13 @@ import { Check } from "lucide-react";
 import Link from "next/link";
 import { PLANS } from "@/plans/plans";
 import Subscribe from "./subscribe";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Pricing",
+  description:
+    "Choose the perfect plan for your welcome email automation needs - from free to enterprise solutions",
+};
 
 export default function PricingPage() {
   return (

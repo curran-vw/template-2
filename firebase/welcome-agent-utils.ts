@@ -28,17 +28,16 @@ export async function createWelcomeAgent({
       return { error: "User document does not exist" };
     }
 
-    // Check if user has reached their workspace limit
-    if (user.usage.agents >= user.usage.agents) {
+    // Check if user has reached their agent limit
+    if (user.usage.agents >= user.limits.agents) {
       return { error: "You have reached the maximum number of agents for your plan" };
     }
 
-    const timestamp = Timestamp.now();
     const newAgent = {
       ...agent,
       workspaceId,
-      createdAt: timestamp,
-      updatedAt: timestamp,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
     };
 
     if (
@@ -143,6 +142,8 @@ export async function getWelcomeAgent({ agentId }: { agentId: string }) {
     const agent = {
       id: docSnap.id,
       ...docSnap.data(),
+      createdAt: docSnap.data()?.createdAt?.toDate(),
+      updatedAt: docSnap.data()?.updatedAt?.toDate(),
     } as WelcomeAgent;
 
     return { success: "Welcome agent retrieved successfully", agent };
@@ -167,6 +168,8 @@ export async function getWorkspaceWelcomeAgents({ workspaceId }: { workspaceId: 
     const agents = querySnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
+      createdAt: doc.data()?.createdAt?.toDate(),
+      updatedAt: doc.data()?.updatedAt?.toDate(),
     })) as WelcomeAgent[];
 
     return { success: "Welcome agents retrieved successfully", agents };
@@ -227,6 +230,8 @@ export async function getWelcomeAgents({ workspaceId }: { workspaceId: string })
     const agents = querySnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
+      createdAt: doc.data()?.createdAt?.toDate(),
+      updatedAt: doc.data()?.updatedAt?.toDate(),
     })) as WelcomeAgent[];
 
     return { success: "Welcome agents retrieved successfully", agents };

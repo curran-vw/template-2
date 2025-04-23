@@ -12,7 +12,10 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Welcome Agent",
+  title: {
+    default: "Welcome Agent",
+    template: "%s | Welcome Agent",
+  },
   description: "Automate your welcome email campaigns",
   icons: {
     icon: [{ url: "/wa-favicon.png" }, { url: "/favicon.ico" }],
