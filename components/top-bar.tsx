@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { LogOut, Settings, User, Menu, Sparkles } from "lucide-react";
+import { LogOut, Settings, User, Menu, Sparkles, CreditCard } from "lucide-react";
 
 import { useAuth } from "@/hooks/use-auth";
 import { WorkspaceSwitcher } from "./workspace-switcher";
@@ -72,6 +72,14 @@ export function TopBar() {
               >
                 <Sparkles className='mr-2 h-4 w-4' />
                 {user?.plan} Plan
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  router.push("/usage");
+                }}
+              >
+                <CreditCard className='mr-2 h-4 w-4' />
+                Usage & Billing
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem

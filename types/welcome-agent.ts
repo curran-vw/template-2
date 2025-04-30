@@ -1,12 +1,10 @@
-import { Timestamp } from "firebase-admin/firestore";
-
 export interface WelcomeAgent {
   id: string;
   workspaceId: string;
   name: string;
   status: "draft" | "published";
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  createdAt: Date;
+  updatedAt: Date;
   emailPurpose: {
     preset: string;
     directive: string;

@@ -129,29 +129,31 @@ export default function Logs() {
             <TableRow>
               <TableHead>Timestamp</TableHead>
               <TableHead>Agent</TableHead>
-              <TableHead>Level</TableHead>
-              <TableHead>Message</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Details</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {logs.map((log) => (
               <TableRow key={log.id} className='group hover:bg-muted/50'>
-                <TableCell className='font-medium'>{log.timestamp.toLocaleString()}</TableCell>
-                <TableCell>{log.agentName}</TableCell>
+                <TableCell className='font-medium'>{log.createdAt.toLocaleString()}</TableCell>
+                <TableCell>{log.agentId}</TableCell>
                 <TableCell>
                   <span
                     className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                      log.level === "error"
-                        ? "bg-destructive/10 text-destructive"
-                        : log.level === "warning"
-                        ? "bg-warning/10 text-warning"
-                        : "bg-success/10 text-success"
+                      log.type === "api"
+                        ? "bg-blue-100 text-blue-800"
+                        : log.type === "crawl"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-yellow-100 text-yellow-800"
                     }`}
                   >
-                    {log.level}
+                    {log.type}
                   </span>
                 </TableCell>
-                <TableCell>{log.message}</TableCell>
+                <TableCell>{log.status}</TableCell>
+                <TableCell>{log.details}</TableCell>
               </TableRow>
             ))}
             {logs.length === 0 && (

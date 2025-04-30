@@ -89,8 +89,6 @@ export async function crawlWebsite({ url, workspaceId, agentId }: CrawlParams) {
       text = text.substring(0, MAX_CHARS) + "...";
     }
 
-    // Now let's summarize with GPT4o-mini via OpenRouter
-
     // Log the OpenRouter API call
     await addLog({
       type: "api",
@@ -100,6 +98,7 @@ export async function crawlWebsite({ url, workspaceId, agentId }: CrawlParams) {
       agentId,
     });
 
+    // Now let's summarize with GPT4o-mini via OpenRouter
     const openRouterResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -151,8 +150,7 @@ export async function crawlWebsite({ url, workspaceId, agentId }: CrawlParams) {
     });
 
     return {
-      success: true,
-      rawContent: text,
+      success: "Successfully crawled and summarized website",
       summary,
     };
   } catch (error) {

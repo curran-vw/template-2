@@ -74,6 +74,7 @@ export async function getNotificationEmail({
     const notificationEmail = {
       id: snapshot.docs[0].id,
       ...snapshot.docs[0].data(),
+      createdAt: snapshot.docs[0].data().createdAt.toDate(),
     } as NotificationEmail;
 
     return { notificationEmail, success: "Notification email found successfully" };
@@ -97,6 +98,7 @@ export async function findByLocalPart({ localPart }: { localPart: string }) {
     const notificationEmail = {
       id: snapshot.docs[0].id,
       ...snapshot.docs[0].data(),
+      createdAt: snapshot.docs[0].data().createdAt.toDate(),
     } as NotificationEmail;
 
     return { notificationEmail, success: "Notification email found successfully" };

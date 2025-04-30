@@ -7,7 +7,6 @@ import { PLANS } from "@/plans/plans";
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 export async function POST(req: Request) {
-  //   const user = await requireAuth();
   const body = await req.text();
 
   const signature = headers().get("stripe-signature");
@@ -65,6 +64,7 @@ export async function POST(req: Request) {
           workspaces: plan.limits.workspaces,
         };
         userData.stripeCustomerId = customerId;
+
         await user.docs[0].ref.update(userData);
 
         break;
@@ -72,12 +72,10 @@ export async function POST(req: Request) {
 
       case "customer.subscription.updated": {
         // @ts-ignore
-        const session = await stripe.checkout.sessions.retrieve(data.object.id, {
-          expand: ["line_items"],
-        });
-        const customerId = session?.customer as string;
+        const subscription = await stripe.subscriptions.retrieve(data.object.id);
+        const customerId = subscription.customer as string;
         const customer = await stripe.customers.retrieve(customerId);
-        const priceId = session?.line_items?.data[0]?.price?.id;
+        const priceId = subscription.items.data[0].price.id;
 
         // get plan from PLANS object
         const plan = Object.values(PLANS).find((plan) => plan.price.monthly.priceId === priceId);

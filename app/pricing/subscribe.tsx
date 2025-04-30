@@ -31,7 +31,7 @@ export default function Subscribe({ tier, url }: { tier: "pro" | "scale"; url: s
           <LoadingSpinner />
         </span>
       ) : isSubscribed || isUpgrade ? (
-        <Link href={CUSTOMER_PORTAL_LINK + `?prefilled_email=${user?.email}`}>{label}</Link>
+        <Link href='/usage'>{label}</Link>
       ) : (
         <Link href={url + `?prefilled_email=${user?.email}`}>{label}</Link>
       )}

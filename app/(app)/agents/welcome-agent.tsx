@@ -14,6 +14,7 @@ import {
   ChevronDown,
   Trash2,
   Loader2,
+  File,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -130,7 +131,7 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
   const [isGenerationDialogOpen, setIsGenerationDialogOpen] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoadingAccounts, setIsLoadingAccounts] = useState(true);
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState(agent ? true : false);
   // Track initial values
   const [initialValues, setInitialValues] = useState({
     agentName: agent?.name || "Custom Welcome Agent",
@@ -675,7 +676,15 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align='end'>
-                      <DropdownMenuItem onClick={handleSaveAsDraft}>Save as Draft</DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleSaveAsDraft();
+                        }}
+                      >
+                        {isSaving ? <LoadingSpinner className='h-4 w-4' /> : <File />}
+                        <span>Save as Draft</span>
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -1068,7 +1077,7 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
                     {isSaving ? (
                       <LoadingSpinner className='h-4 w-4' />
                     ) : (
-                      <Save className='h-4 w-4' />
+                      <File className='h-4 w-4' />
                     )}
                     Save as Draft
                   </Button>

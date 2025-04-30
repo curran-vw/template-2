@@ -64,7 +64,7 @@ export async function getAuthenticatedUser() {
           emailSent: 0,
           agents: 0,
           connectedGmailAccounts: 0,
-          workspaces: 0,
+          workspaces: 1,
         },
         limits: {
           emailSent: PLANS.free.limits.emailSent,

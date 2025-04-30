@@ -47,6 +47,9 @@ export function useAuth(): UseAuthReturn {
       // Then clear session on server
       await logoutUser();
 
+      // set user to null
+      authContext.setUser(null);
+
       // Redirect to home page
       router.push("/sign-in");
     } catch (error) {

@@ -29,14 +29,16 @@ export default function PricingPage() {
       {/* Main Content */}
       <main className='flex-1 flex flex-col items-center justify-center py-16 px-4 md:px-6'>
         <div className='container max-w-6xl mx-auto text-center space-y-12'>
-          <Image
-            src='/wa-favicon.png'
-            alt='Welcome Agent Logo'
-            className='object-contain mx-auto'
-            priority
-            width={100}
-            height={100}
-          />
+          <Link href='/'>
+            <Image
+              src='/wa-favicon.png'
+              alt='Welcome Agent Logo'
+              className='object-contain mx-auto'
+              priority
+              width={100}
+              height={100}
+            />
+          </Link>
           <div className='space-y-4'>
             <h2 className='text-lg font-medium uppercase tracking-wider text-gray-500'>PRICING</h2>
             <h1 className='text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl'>

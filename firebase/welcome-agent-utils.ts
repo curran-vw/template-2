@@ -42,7 +42,7 @@ export async function createWelcomeAgent({
 
     if (
       agent.configuration.emailAccount &&
-      user.usage.connectedGmailAccounts >= user.usage.connectedGmailAccounts
+      user.usage.connectedGmailAccounts >= user.limits.connectedGmailAccounts
     ) {
       return { error: "You have reached the maximum number of connected accounts for your plan" };
     } else {
@@ -59,7 +59,12 @@ export async function createWelcomeAgent({
       "usage.agents": FieldValue.increment(1),
     });
 
-    const createdAgent = { ...newAgent, id: docRef.id };
+    const createdAgent = {
+      ...newAgent,
+      id: docRef.id,
+      createdAt: newAgent.createdAt.toDate(),
+      updatedAt: newAgent.updatedAt.toDate(),
+    };
 
     return { success: "Welcome agent created successfully", agent: createdAgent };
   } catch (error) {
@@ -93,7 +98,7 @@ export async function updateWelcomeAgent({
     if (
       !agent.configuration.emailAccount &&
       updates.configuration?.emailAccount &&
-      user.usage.connectedGmailAccounts >= user.usage.connectedGmailAccounts
+      user.usage.connectedGmailAccounts >= user.limits.connectedGmailAccounts
     ) {
       return { error: "You have reached the maximum number of connected accounts for your plan" };
     } else {
@@ -117,6 +122,8 @@ export async function updateWelcomeAgent({
     const updatedAgent = {
       id: updatedDocSnap.id,
       ...updatedDocSnap.data(),
+      createdAt: updatedDocSnap.data()?.createdAt?.toDate(),
+      updatedAt: updatedDocSnap.data()?.updatedAt?.toDate(),
     } as WelcomeAgent;
 
     return { success: "Welcome agent updated successfully", agent: updatedAgent };

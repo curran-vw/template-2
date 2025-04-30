@@ -49,8 +49,8 @@ export const PLANS = {
     description: "For small teams",
     price: {
       monthly: {
-        priceId: "price_1REbqjDNYPwWd6ckCnLmzf5n",
-        link: "https://buy.stripe.com/test_aEU14LgcL8GN1SEaEG",
+        priceId: "price_1RJdWGDNYPwWd6ckATOIdF1x",
+        link: "https://buy.stripe.com/test_00g5l1gcLbSZgNy9AM",
         amount: 20,
       },
     },
@@ -73,8 +73,8 @@ export const PLANS = {
     description: "For large teams",
     price: {
       monthly: {
-        priceId: "price_1REc1MDNYPwWd6ckchxzrFrs",
-        link: "https://buy.stripe.com/test_bIY14L8KjbSZbteaEN",
+        priceId: "price_1RJdZZDNYPwWd6ckKZ1h4Rp0",
+        link: "https://buy.stripe.com/test_dR614L4u30ah54Q6oB",
         amount: 200,
       },
     },
