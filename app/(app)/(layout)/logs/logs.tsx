@@ -3,12 +3,10 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
-import { toast } from "sonner";
-
 import { useWorkspace } from "@/hooks/use-workspace";
 import * as logsUtils from "@/firebase/logs-utils";
-
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -18,10 +16,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { LogRecord } from "@/firebase/logs-utils";
-import { LoadingSpinner } from "@/components/loading-spinner";
 
 export default function Logs() {
   const { workspace } = useWorkspace();
@@ -45,6 +42,7 @@ export default function Logs() {
   const { data: logsData, refetch: refetchLogs } = useQuery({
     queryKey: ["logs", workspace?.id, agentId, currentPage],
     queryFn: async () => {
+      setLoading(true);
       return await logsUtils.getLogs({
         workspaceId: workspace?.id!,
         agentId,
@@ -83,30 +81,6 @@ export default function Logs() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className='container mx-auto py-6 space-y-6'>
-        <div className='flex items-center justify-between'>
-          <Skeleton className='h-8 w-48' />
-          <Skeleton className='h-10 w-24' />
-        </div>
-        <Card>
-          <CardHeader className='pb-3'>
-            <Skeleton className='h-6 w-32' />
-          </CardHeader>
-          <CardContent>
-            <div className='space-y-4'>
-              <Skeleton className='h-10 w-full' />
-              <Skeleton className='h-10 w-full' />
-              <Skeleton className='h-10 w-full' />
-              <Skeleton className='h-10 w-full' />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className='container mx-auto space-y-6 py-6'>
       <div className='flex items-center justify-between'>
@@ -123,40 +97,41 @@ export default function Logs() {
         </Button>
       </div>
 
-      <Card>
+      <Card className='rounded-lg'>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Timestamp</TableHead>
-              <TableHead>Agent</TableHead>
+              <TableHead>Details</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Details</TableHead>
+              <TableHead>Timestamp</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {logs.map((log) => (
-              <TableRow key={log.id} className='group hover:bg-muted/50'>
-                <TableCell className='font-medium'>{log.createdAt.toLocaleString()}</TableCell>
-                <TableCell>{log.agentId}</TableCell>
-                <TableCell>
-                  <span
-                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                      log.type === "api"
-                        ? "bg-blue-100 text-blue-800"
-                        : log.type === "crawl"
-                        ? "bg-green-100 text-green-800"
-                        : "bg-yellow-100 text-yellow-800"
-                    }`}
-                  >
-                    {log.type}
-                  </span>
-                </TableCell>
-                <TableCell>{log.status}</TableCell>
-                <TableCell>{log.details}</TableCell>
-              </TableRow>
-            ))}
-            {logs.length === 0 && (
+            {loading ? (
+              <>
+                <TableRow>
+                  <TableCell colSpan={4} className='text-center'>
+                    <Skeleton className='h-8 w-full' />
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell colSpan={4} className='text-center'>
+                    <Skeleton className='h-8 w-full' />
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell colSpan={4} className='text-center'>
+                    <Skeleton className='h-8 w-full' />
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell colSpan={4} className='text-center'>
+                    <Skeleton className='h-8 w-full' />
+                  </TableCell>
+                </TableRow>
+              </>
+            ) : logs.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={4} className='text-center'>
                   <div className='flex flex-col items-center justify-center h-32 gap-2'>
@@ -165,6 +140,15 @@ export default function Logs() {
                   </div>
                 </TableCell>
               </TableRow>
+            ) : (
+              logs.map((log) => (
+                <TableRow key={log.id}>
+                  <TableCell>{log.details}</TableCell>
+                  <TableCell className='uppercase'>{log.type}</TableCell>
+                  <TableCell className='uppercase'>{log.status}</TableCell>
+                  <TableCell>{log.createdAt.toLocaleString()}</TableCell>
+                </TableRow>
+              ))
             )}
           </TableBody>
         </Table>
@@ -205,35 +189,30 @@ export default function Logs() {
                   of <span className='font-medium'>{pagination.totalLogs}</span> results
                 </p>
               </div>
-              <div>
-                <nav
-                  className='isolate inline-flex -space-x-px rounded-md shadow-sm'
-                  aria-label='Pagination'
+              <div className='flex items-center justify-center px-4 py-2 text-sm font-medium'>
+                <Button
+                  onClick={handlePreviousPage}
+                  disabled={!pagination.hasPreviousPage}
+                  variant='outline'
+                  size='sm'
+                  className='rounded-r-none'
                 >
-                  <Button
-                    onClick={handlePreviousPage}
-                    disabled={!pagination.hasPreviousPage}
-                    variant='outline'
-                    size='sm'
-                    className='rounded-l-md'
-                  >
-                    <ChevronLeft className='h-4 w-4' />
-                    <span className='ml-2'>Previous</span>
-                  </Button>
-                  <div className='flex items-center justify-center px-4 py-2 text-sm font-medium border border-input bg-background'>
-                    Page {logs.length > 0 ? currentPage : 0} of {pagination.totalPages}
-                  </div>
-                  <Button
-                    onClick={handleNextPage}
-                    disabled={!pagination.hasNextPage}
-                    variant='outline'
-                    size='sm'
-                    className='rounded-r-md'
-                  >
-                    <span className='mr-2'>Next</span>
-                    <ChevronRight className='h-4 w-4' />
-                  </Button>
-                </nav>
+                  <ChevronLeft className='h-4 w-4' />
+                  <span className='ml-2'>Previous</span>
+                </Button>
+                <div className='flex items-center justify-center px-4 h-8 text-sm font-medium border border-input bg-background'>
+                  Page {logs.length > 0 ? currentPage : 0} of {pagination.totalPages}
+                </div>
+                <Button
+                  onClick={handleNextPage}
+                  disabled={!pagination.hasNextPage}
+                  variant='outline'
+                  size='sm'
+                  className='rounded-l-none'
+                >
+                  <span className='mr-2'>Next</span>
+                  <ChevronRight className='h-4 w-4' />
+                </Button>
               </div>
             </div>
           </div>

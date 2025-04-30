@@ -52,9 +52,6 @@ export async function addLog({
 }
 
 export async function getLogs({
-  workspaceId,
-  agentId = null,
-  logType = "all",
   page = 1,
   pageSize = 10,
 }: {
@@ -64,27 +61,11 @@ export async function getLogs({
   page?: number;
   pageSize?: number;
 }) {
-  const user = await requireAuth();
+  await requireAuth();
 
   try {
     // Create base query
-    let query = adminDb
-      .collection("logs")
-      .where("userId", "==", user.id)
-      .orderBy("timestamp", "desc");
-
-    // Add filters if provided
-    if (workspaceId) {
-      query = query.where("workspaceId", "==", workspaceId);
-    }
-
-    if (agentId) {
-      query = query.where("agentId", "==", agentId);
-    }
-
-    if (logType !== "all") {
-      query = query.where("type", "==", logType);
-    }
+    let query = adminDb.collection("logs").orderBy("createdAt", "desc");
 
     const snapshot = await query.get();
     const totalLogs = snapshot.docs.length;

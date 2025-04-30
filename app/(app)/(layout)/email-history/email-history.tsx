@@ -59,12 +59,15 @@ export default function EmailHistory() {
   const { data: emailsData, refetch: refetchEmails } = useQuery({
     queryKey: ["email-history", workspace?.id, agentId, currentPage],
     queryFn: async () => {
-      return await emailHistoryUtils.getEmailHistory({
+      setLoading(true);
+      const res = await emailHistoryUtils.getEmailHistory({
         workspaceId: workspace?.id!,
         agentId,
         page: currentPage,
         pageSize: 10,
       });
+      setLoading(false);
+      return res;
     },
     enabled: !!workspace?.id,
   });
@@ -80,7 +83,6 @@ export default function EmailHistory() {
           hasPreviousPage: false,
         },
       );
-      setLoading(false);
     }
   }, [emailsData]);
 
@@ -96,7 +98,7 @@ export default function EmailHistory() {
       toast.success("Success", {
         description: success,
       });
-      refetchEmails(); // Refresh the list
+      refetchEmails();
     } else {
       toast.error("Error", {
         description: error,
@@ -117,30 +119,6 @@ export default function EmailHistory() {
       setCurrentPage((prev) => prev - 1);
     }
   };
-
-  if (loading) {
-    return (
-      <div className='container mx-auto py-6 space-y-6'>
-        <div className='flex items-center justify-between'>
-          <Skeleton className='h-8 w-48' />
-          <Skeleton className='h-10 w-24' />
-        </div>
-        <Card>
-          <CardHeader className='pb-3'>
-            <Skeleton className='h-6 w-32' />
-          </CardHeader>
-          <CardContent>
-            <div className='space-y-4'>
-              <Skeleton className='h-10 w-full' />
-              <Skeleton className='h-10 w-full' />
-              <Skeleton className='h-10 w-full' />
-              <Skeleton className='h-10 w-full' />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className='container mx-auto space-y-6 py-6'>
@@ -166,192 +144,34 @@ export default function EmailHistory() {
               <TableHead>Agent</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Date & Time</TableHead>
-              <TableHead className='text-right'>Actions</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {emails.map((email) => (
-              <React.Fragment key={email.id}>
-                <TableRow className='group hover:bg-muted/50'>
-                  <TableCell className='font-medium'>{email.recipientEmail}</TableCell>
-                  <TableCell>{email.agentName}</TableCell>
-                  <TableCell>{email.status}</TableCell>
-                  <TableCell>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span>{email.createdAt.toLocaleString()}</span>
-                        </TooltipTrigger>
-                        <TooltipContent>{email.createdAt.toLocaleString()}</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </TableCell>
-                  <TableCell className='text-right'>
-                    <div className='flex items-center justify-end gap-2 opacity-80 group-hover:opacity-100'>
-                      {email.status === "under_review" && (
-                        <Button onClick={() => handleApprove(email.id)} className='gap-2'>
-                          {isSending ? <LoadingSpinner /> : <Send />}
-                          <span>Send</span>
-                        </Button>
-                      )}
-                      <Button
-                        onClick={() =>
-                          setExpandedEmail(expandedEmail === email.id ? null : email.id)
-                        }
-                        variant='ghost'
-                        size='sm'
-                        className='text-primary hover:bg-primary/10 hover:text-primary'
-                      >
-                        {expandedEmail === email.id ? (
-                          <ChevronUp className='h-4 w-4' />
-                        ) : (
-                          <ChevronDown className='h-4 w-4' />
-                        )}
-                        <span className='ml-2'>Preview</span>
-                      </Button>
-                    </div>
+            {loading ? (
+              <>
+                <TableRow>
+                  <TableCell colSpan={5} className='text-center'>
+                    <Skeleton className='h-8 w-full' />
                   </TableCell>
                 </TableRow>
-                {expandedEmail === email.id && (
-                  <TableRow>
-                    <TableCell colSpan={5} className='bg-muted/30 p-0'>
-                      <div className='p-6'>
-                        <div className='grid grid-cols-5 gap-6'>
-                          {/* Email Preview - Left Side (3 columns) */}
-                          <div className='col-span-3'>
-                            <Card>
-                              <CardHeader className='pb-3 border-b'>
-                                <CardTitle className='flex items-center gap-2 text-base'>
-                                  <Mail className='h-4 w-4' />
-                                  Email Preview
-                                </CardTitle>
-                              </CardHeader>
-                              <CardContent className='pt-4'>
-                                <div className='space-y-4'>
-                                  <div className='flex items-center'>
-                                    <span className='text-sm font-medium text-muted-foreground w-20'>
-                                      To:
-                                    </span>
-                                    <span className='text-sm'>{email.recipientEmail}</span>
-                                  </div>
-                                  <div className='flex items-center'>
-                                    <span className='text-sm font-medium text-muted-foreground w-20'>
-                                      Subject:
-                                    </span>
-                                    <span className='text-sm font-medium'>{email.subject}</span>
-                                  </div>
-                                  {email.error && (
-                                    <div className='flex items-start mt-2 p-3 rounded-md bg-destructive/10 border border-destructive/20'>
-                                      <AlertCircle className='h-5 w-5 text-destructive mr-2 mt-0.5 flex-shrink-0' />
-                                      <div className='space-y-1'>
-                                        <p className='text-sm font-medium text-destructive'>
-                                          Error
-                                        </p>
-                                        <p className='text-sm text-destructive/90'>{email.error}</p>
-                                      </div>
-                                    </div>
-                                  )}
-                                  <div className='border-t pt-4'>
-                                    <div className='prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap'>
-                                      {email.body}
-                                    </div>
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          </div>
-
-                          {/* Details Tabs - Right Side (2 columns) */}
-                          <div className='col-span-2'>
-                            <Card>
-                              <CardHeader className='pb-3 border-b'>
-                                <CardTitle className='text-base'>Welcome Agent Research</CardTitle>
-                                <CardDescription>
-                                  This is the research the welcome agent AI did on your lead to
-                                  generate the email.
-                                </CardDescription>
-                              </CardHeader>
-
-                              <Tabs defaultValue='personal' className='w-full'>
-                                <div className='p-4'>
-                                  <TabsList className='grid w-full grid-cols-2'>
-                                    <TabsTrigger
-                                      value='personal'
-                                      className='flex items-center gap-2'
-                                    >
-                                      <User className='h-4 w-4' />
-                                      Personal Details
-                                    </TabsTrigger>
-                                    <TabsTrigger
-                                      value='business'
-                                      className='flex items-center gap-2'
-                                    >
-                                      <Building className='h-4 w-4' />
-                                      Business Details
-                                    </TabsTrigger>
-                                  </TabsList>
-                                </div>
-
-                                <div className='px-4 pb-4'>
-                                  <TabsContent
-                                    value='personal'
-                                    className='mt-0 focus-visible:outline-none focus-visible:ring-0'
-                                  >
-                                    <div className='max-h-[500px] whitespace-pre-wrap space-y-4 overflow-y-auto rounded-md bg-muted/30 p-4'>
-                                      {email.userInfo}
-                                    </div>
-                                  </TabsContent>
-
-                                  <TabsContent
-                                    value='business'
-                                    className='mt-0 focus-visible:outline-none focus-visible:ring-0'
-                                  >
-                                    <div className='max-h-[500px] space-y-4 overflow-y-auto rounded-md bg-muted/30 p-4'>
-                                      {email.businessContext ? (
-                                        <div className='prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap'>
-                                          <p>
-                                            <strong>Website:</strong>{" "}
-                                            {email.businessContext.website}
-                                          </p>
-                                          <p>
-                                            <strong>Purpose:</strong>{" "}
-                                            {email.businessContext.purpose}
-                                          </p>
-                                          {email.businessContext.additionalContext && (
-                                            <p>
-                                              <strong>Additional Context:</strong>{" "}
-                                              {email.businessContext.additionalContext}
-                                            </p>
-                                          )}
-                                          {email.businessContext.websiteSummary && (
-                                            <p>
-                                              <strong>Website Summary:</strong>{" "}
-                                              {email.businessContext.websiteSummary}
-                                            </p>
-                                          )}
-                                        </div>
-                                      ) : (
-                                        <div className='flex flex-col items-center justify-center py-6 text-center'>
-                                          <AlertCircle className='h-8 w-8 text-muted-foreground/60 mb-2' />
-                                          <p className='text-sm text-muted-foreground'>
-                                            No business details available
-                                          </p>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </TabsContent>
-                                </div>
-                              </Tabs>
-                            </Card>
-                          </div>
-                        </div>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </React.Fragment>
-            ))}
-            {emails.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className='text-center'>
+                    <Skeleton className='h-8 w-full' />
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell colSpan={5} className='text-center'>
+                    <Skeleton className='h-8 w-full' />
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell colSpan={5} className='text-center'>
+                    <Skeleton className='h-8 w-full' />
+                  </TableCell>
+                </TableRow>
+              </>
+            ) : emails.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className='text-center'>
                   <div className='flex flex-col items-center justify-center h-32 gap-2'>
@@ -360,6 +180,192 @@ export default function EmailHistory() {
                   </div>
                 </TableCell>
               </TableRow>
+            ) : (
+              emails.map((email) => (
+                <React.Fragment key={email.id}>
+                  <TableRow className='group hover:bg-muted/50'>
+                    <TableCell className='font-medium'>{email.recipientEmail}</TableCell>
+                    <TableCell>{email.agentName}</TableCell>
+                    <TableCell>{email.status}</TableCell>
+                    <TableCell>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span>{email.createdAt.toLocaleString()}</span>
+                          </TooltipTrigger>
+                          <TooltipContent>{email.createdAt.toLocaleString()}</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </TableCell>
+                    <TableCell className='text-right'>
+                      <div className='flex items-center justify-end gap-2 opacity-80 group-hover:opacity-100'>
+                        {email.status === "under_review" && (
+                          <Button onClick={() => handleApprove(email.id)} className='gap-2'>
+                            {isSending ? <LoadingSpinner /> : <Send />}
+                            <span>Send</span>
+                          </Button>
+                        )}
+                        <Button
+                          onClick={() =>
+                            setExpandedEmail(expandedEmail === email.id ? null : email.id)
+                          }
+                          variant='ghost'
+                          size='sm'
+                          className='text-primary hover:bg-primary/10 hover:text-primary'
+                        >
+                          {expandedEmail === email.id ? (
+                            <ChevronUp className='h-4 w-4' />
+                          ) : (
+                            <ChevronDown className='h-4 w-4' />
+                          )}
+                          <span className='ml-2'>Preview</span>
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                  {expandedEmail === email.id && (
+                    <TableRow>
+                      <TableCell colSpan={5} className='bg-muted/30 p-0'>
+                        <div className='p-6'>
+                          <div className='grid grid-cols-5 gap-6'>
+                            {/* Email Preview - Left Side (3 columns) */}
+                            <div className='col-span-3'>
+                              <Card>
+                                <CardHeader className='pb-3 border-b'>
+                                  <CardTitle className='flex items-center gap-2 text-base'>
+                                    <Mail className='h-4 w-4' />
+                                    Email Preview
+                                  </CardTitle>
+                                </CardHeader>
+                                <CardContent className='pt-4'>
+                                  <div className='space-y-4'>
+                                    <div className='flex items-center'>
+                                      <span className='text-sm font-medium text-muted-foreground w-20'>
+                                        To:
+                                      </span>
+                                      <span className='text-sm'>{email.recipientEmail}</span>
+                                    </div>
+                                    <div className='flex items-center'>
+                                      <span className='text-sm font-medium text-muted-foreground w-20'>
+                                        Subject:
+                                      </span>
+                                      <span className='text-sm font-medium'>{email.subject}</span>
+                                    </div>
+                                    {email.error && (
+                                      <div className='flex items-start mt-2 p-3 rounded-md bg-destructive/10 border border-destructive/20'>
+                                        <AlertCircle className='h-5 w-5 text-destructive mr-2 mt-0.5 flex-shrink-0' />
+                                        <div className='space-y-1'>
+                                          <p className='text-sm font-medium text-destructive'>
+                                            Error
+                                          </p>
+                                          <p className='text-sm text-destructive/90'>
+                                            {email.error}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    )}
+                                    <div className='border-t pt-4'>
+                                      <div className='prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap'>
+                                        {email.body}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            </div>
+
+                            {/* Details Tabs - Right Side (2 columns) */}
+                            <div className='col-span-2'>
+                              <Card>
+                                <CardHeader className='pb-3 border-b'>
+                                  <CardTitle className='text-base'>
+                                    Welcome Agent Research
+                                  </CardTitle>
+                                  <CardDescription>
+                                    This is the research the welcome agent AI did on your lead to
+                                    generate the email.
+                                  </CardDescription>
+                                </CardHeader>
+
+                                <Tabs defaultValue='personal' className='w-full'>
+                                  <div className='p-4'>
+                                    <TabsList className='grid w-full grid-cols-2'>
+                                      <TabsTrigger
+                                        value='personal'
+                                        className='flex items-center gap-2'
+                                      >
+                                        <User className='h-4 w-4' />
+                                        Personal Details
+                                      </TabsTrigger>
+                                      <TabsTrigger
+                                        value='business'
+                                        className='flex items-center gap-2'
+                                      >
+                                        <Building className='h-4 w-4' />
+                                        Business Details
+                                      </TabsTrigger>
+                                    </TabsList>
+                                  </div>
+
+                                  <div className='px-4 pb-4'>
+                                    <TabsContent
+                                      value='personal'
+                                      className='mt-0 focus-visible:outline-none focus-visible:ring-0'
+                                    >
+                                      <div className='max-h-[500px] whitespace-pre-wrap space-y-4 overflow-y-auto rounded-md bg-muted/30 p-4'>
+                                        {email.userInfo}
+                                      </div>
+                                    </TabsContent>
+
+                                    <TabsContent
+                                      value='business'
+                                      className='mt-0 focus-visible:outline-none focus-visible:ring-0'
+                                    >
+                                      <div className='max-h-[500px] space-y-4 overflow-y-auto rounded-md bg-muted/30 p-4'>
+                                        {email.businessContext ? (
+                                          <div className='prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap'>
+                                            <p>
+                                              <strong>Website:</strong>{" "}
+                                              {email.businessContext.website}
+                                            </p>
+                                            <p>
+                                              <strong>Purpose:</strong>{" "}
+                                              {email.businessContext.purpose}
+                                            </p>
+                                            {email.businessContext.additionalContext && (
+                                              <p>
+                                                <strong>Additional Context:</strong>{" "}
+                                                {email.businessContext.additionalContext}
+                                              </p>
+                                            )}
+                                            {email.businessContext.websiteSummary && (
+                                              <p>
+                                                <strong>Website Summary:</strong>{" "}
+                                                {email.businessContext.websiteSummary}
+                                              </p>
+                                            )}
+                                          </div>
+                                        ) : (
+                                          <div className='flex flex-col items-center justify-center py-6 text-center'>
+                                            <AlertCircle className='h-8 w-8 text-muted-foreground/60 mb-2' />
+                                            <p className='text-sm text-muted-foreground'>
+                                              No business details available
+                                            </p>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </TabsContent>
+                                  </div>
+                                </Tabs>
+                              </Card>
+                            </div>
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </React.Fragment>
+              ))
             )}
           </TableBody>
         </Table>

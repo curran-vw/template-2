@@ -100,7 +100,6 @@ export async function getGmailConnections({
       ...doc.data(),
     }));
 
-    console.log("connections", connections);
     return {
       success: "Connections retrieved successfully",
       connections: connections as GmailConnection[],
