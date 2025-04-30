@@ -12,14 +12,10 @@ export async function createWorkspace({ name }: { name: string }) {
       return { error: "Workspace name cannot be empty" };
     }
 
-    // Get plan from database
-    const planDoc = await adminDb.collection("plans").doc(user.plan).get();
-    const planData = planDoc.data();
-
     // Check if user has reached their workspace limit
-    if (user.usage.workspaces >= planData?.workspaces) {
+    if (user.usage.workspaces >= user.limits.workspaces) {
       return {
-        error: `You have reached the maximum number of workspaces for your plan (${planData?.workspaces}). Please upgrade your plan to create more workspaces.`,
+        error: `You have reached the maximum number of workspaces for your plan (${user.limits.workspaces}). Please upgrade your plan to create more workspaces.`,
       };
     }
 

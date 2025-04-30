@@ -45,7 +45,7 @@ export async function createWelcomeAgent({
       user.usage.connectedGmailAccounts >= user.limits.connectedGmailAccounts
     ) {
       return { error: "You have reached the maximum number of connected accounts for your plan" };
-    } else {
+    } else if (agent.configuration.emailAccount) {
       await userRef.update({
         "usage.connectedGmailAccounts": FieldValue.increment(1),
       });

@@ -73,7 +73,7 @@ export type EmailGenerationStep = "user-info" | "business-info" | "email-body" |
 export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
   const router = useRouter();
   const { workspace, agents, setAgents } = useWorkspace();
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
   const [signupInfo, setSignupInfo] = useState(
     "Name: Curran Van Waarde\nEmail: Curran@Agentfolio.ai\nWebsite: Agentfolio.ai\nRole: Founder",
   );
@@ -332,7 +332,7 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
 
   // Update the handleSave function to include settings
   const handleSave = async (action: "published" | "draft") => {
-    if (!workspace?.id) return;
+    if (!workspace?.id || !user?.id) return;
 
     // Clear previous validation errors
     setValidationErrors({});
@@ -444,6 +444,8 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
           description: success,
         });
         setAgents(agents.map((a) => (a.id === agent.id ? updatedAgent : a)));
+        router.push("/agents");
+        router.refresh();
       } else {
         toast.error("Error", { description: error });
       }
@@ -458,13 +460,13 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
           description: success,
         });
         setAgents([...agents, agent]);
+        setUser({ ...user, usage: { ...user.usage, agents: user.usage.agents + 1 } });
+        router.push("/agents");
+        router.refresh();
       } else {
         toast.error("Error", { description: error });
       }
     }
-
-    router.push("/agents");
-    router.refresh();
   };
 
   // Update the save handlers for the buttons
