@@ -131,7 +131,7 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
   const [isGenerationDialogOpen, setIsGenerationDialogOpen] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoadingAccounts, setIsLoadingAccounts] = useState(agent ? true : false);
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
   // Track initial values
   const [initialValues, setInitialValues] = useState({
     agentName: agent?.name || "Custom Welcome Agent",
@@ -175,22 +175,17 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
     queryKey: ["connectedAccounts", workspace?.id, agent?.id],
     queryFn: async () => {
       setIsLoadingAccounts(true);
-      return await gmailUtils.getGmailConnections({
-        agentId: agent?.id!,
-        workspaceId: workspace?.id!,
-      });
+      const { connections } = await gmailUtils.getGmailConnections();
+      setIsLoadingAccounts(false);
+      return connections;
     },
     enabled: !!workspace?.id && !!agent?.id,
   });
 
   useEffect(() => {
-    if (connectedAccountsData && connectedAccountsData.connections) {
-      setConnectedAccounts(connectedAccountsData.connections);
+    if (connectedAccountsData) {
+      setConnectedAccounts(connectedAccountsData);
       setIsLoadingAccounts(false);
-    } else if (connectedAccountsData?.error) {
-      toast.error("Error", {
-        description: connectedAccountsData.error,
-      });
     }
   }, [connectedAccountsData]);
 
@@ -486,8 +481,6 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
     if (!workspace?.id || !user?.id || !agent?.id) return;
 
     const { success, error, connection } = await gmailUtils.saveGmailConnection({
-      agentId: agent.id,
-      workspaceId: workspace.id,
       email,
       name,
       tokens,
@@ -499,34 +492,19 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
       toast.success("Success", {
         description: success,
       });
+      setUser({
+        ...user,
+        usage: { ...user.usage, connectedGmailAccounts: user.usage.connectedGmailAccounts + 1 },
+      });
     } else {
       toast.error("Error", {
         description: error,
       });
     }
-
-    // // Reload connected accounts
-    // const {
-    //   connections,
-    //   success: connectionsSuccess,
-    //   error: connectionsError,
-    // } = await gmailUtils.getWorkspaceConnections({
-    //   workspaceId: workspace.id,
-    // });
-
-    // if (connectionsSuccess) {
-    //   setConnectedAccounts(connections);
-    //   toast.success("Success", {
-    //     description: connectionsSuccess,
-    //   });
-    // } else {
-    //   toast.error("Error", {
-    //     description: connectionsError,
-    //   });
-    // }
   };
 
   const handleRemoveGmailConnection = async (connectionId: string, email: string) => {
+    if (!user) return;
     setIsRemovingAccount(connectionId);
     const { success, error } = await gmailUtils.removeConnection({
       connectionId,
@@ -537,16 +515,17 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
         connections,
         success: connectionsSuccess,
         error: connectionsError,
-      } = await gmailUtils.getGmailConnections({
-        workspaceId: workspace!.id,
-        agentId: agent!.id,
-      });
+      } = await gmailUtils.getGmailConnections();
 
       if (connectionsSuccess) {
         setConnectedAccounts(connections);
         if (selectedEmailAccount === email) {
           setSelectedEmailAccount("");
         }
+        setUser({
+          ...user,
+          usage: { ...user.usage, connectedGmailAccounts: user.usage.connectedGmailAccounts - 1 },
+        });
       } else {
         toast.error("Error", {
           description: connectionsError,
@@ -585,23 +564,29 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
     setIsTestingEmail(null);
   };
 
-  // Add useEffect to generate notification email
-  useEffect(() => {
-    const setupNotificationEmail = async () => {
-      if (!workspace?.id || !agent?.id) return;
-      // Try to get existing notification email
+  const [loadingNotificationEmail, setLoadingNotificationEmail] = useState(false);
+  const { data: notificationEmailData } = useQuery({
+    queryKey: ["notificationEmail", workspace?.id, agent?.id],
+    queryFn: async () => {
+      setLoadingNotificationEmail(true);
+      if (!workspace?.id || !agent?.id) return null;
       const { notificationEmail } = await mailgunUtils.getNotificationEmail({
         agentId: agent.id,
         workspaceId: workspace.id,
       });
-      if (notificationEmail) {
-        setNotificationEmail(getFullEmailAddress(notificationEmail.emailLocalPart));
-      }
-    };
-    if (workspace?.id && agent?.id) {
-      setupNotificationEmail();
+      setLoadingNotificationEmail(false);
+      return notificationEmail;
+    },
+    enabled: !!workspace?.id && !!agent?.id,
+  });
+
+  // Set notification email when data is available
+  useEffect(() => {
+    if (notificationEmailData) {
+      setNotificationEmail(getFullEmailAddress(notificationEmailData.emailLocalPart));
+      setLoadingNotificationEmail(false);
     }
-  }, [workspace?.id, agent?.id]);
+  }, [notificationEmailData]);
 
   return (
     <TooltipProvider>
@@ -1013,7 +998,12 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
                       receive their details and automatically create a personalized welcome email.
                     </p>
 
-                    {notificationEmail ? (
+                    {loadingNotificationEmail ? (
+                      <div className='py-4 text-center text-sm text-muted-foreground'>
+                        <Loader2 className='mx-auto mb-2 h-4 w-4 animate-spin' />
+                        Loading notification email...
+                      </div>
+                    ) : notificationEmail ? (
                       <Card className='relative w-full'>
                         <CardContent className='p-4'>
                           <div className='flex items-center justify-between'>

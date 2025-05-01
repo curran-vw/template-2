@@ -25,13 +25,13 @@ export const PLANS = {
     description: "For personal use",
     features: [
       "3 welcome agents",
-      "3 connected gmail accounts",
+      "2 connected gmail accounts",
       "30 emails per month",
       "3 workspaces",
     ],
     limits: {
       agents: 3,
-      connectedGmailAccounts: 3,
+      connectedGmailAccounts: 2,
       emailSent: 30,
       workspaces: 3,
     },

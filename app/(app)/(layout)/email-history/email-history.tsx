@@ -83,6 +83,7 @@ export default function EmailHistory() {
           hasPreviousPage: false,
         },
       );
+      setLoading(false);
     }
   }, [emailsData]);
 
@@ -186,7 +187,7 @@ export default function EmailHistory() {
                   <TableRow className='group hover:bg-muted/50'>
                     <TableCell className='font-medium'>{email.recipientEmail}</TableCell>
                     <TableCell>{email.agentName}</TableCell>
-                    <TableCell>{email.status}</TableCell>
+                    <TableCell className='uppercase'>{email.status}</TableCell>
                     <TableCell>
                       <TooltipProvider>
                         <Tooltip>

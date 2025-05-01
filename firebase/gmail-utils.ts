@@ -17,20 +17,14 @@ export interface GmailConnection {
   email: string;
   name: string;
   tokens: GmailTokens;
-  workspaceId: string;
   userId: string;
-  agentId: string;
 }
 
 export async function saveGmailConnection({
-  agentId,
-  workspaceId,
   email,
   name,
   tokens,
 }: {
-  agentId: string;
-  workspaceId: string;
   email: string;
   name: string;
   tokens: GmailTokens;
@@ -41,9 +35,7 @@ export async function saveGmailConnection({
     // check if the user has already connected this gmail account
     const connectionRef = await adminDb
       .collection("gmail_connections")
-      .where("agentId", "==", agentId)
       .where("email", "==", email)
-      .where("workspaceId", "==", workspaceId)
       .where("userId", "==", user.id)
       .get();
 
@@ -51,9 +43,14 @@ export async function saveGmailConnection({
       return { error: "You have already connected this Gmail account" };
     }
 
+    if (user.usage.connectedGmailAccounts >= user.limits.connectedGmailAccounts) {
+      return { error: "You have reached the maximum number of connected Gmail accounts" };
+    }
+
     const newConnectionRef = adminDb.collection("gmail_connections").doc();
     const connectionData: GmailConnection = {
       id: newConnectionRef.id,
+      userId: user.id,
       email,
       name,
       tokens: {
@@ -62,11 +59,15 @@ export async function saveGmailConnection({
         expires_in: tokens.expires_in,
         token_type: tokens.token_type,
       },
-      workspaceId,
-      agentId,
-      userId: user.id,
     };
     await newConnectionRef.set(connectionData);
+
+    await adminDb
+      .collection("users")
+      .doc(user.id)
+      .update({
+        "usage.connectedGmailAccounts": FieldValue.increment(1),
+      });
 
     return {
       success: "Gmail connection saved successfully",
@@ -78,21 +79,12 @@ export async function saveGmailConnection({
   }
 }
 
-export async function getGmailConnections({
-  workspaceId,
-  agentId,
-}: {
-  workspaceId: string;
-  agentId: string;
-}) {
+export async function getGmailConnections() {
   const user = await requireAuth();
 
   try {
     const connectionsRef = adminDb.collection("gmail_connections");
-    const q = connectionsRef
-      .where("workspaceId", "==", workspaceId)
-      .where("userId", "==", user.id)
-      .where("agentId", "==", agentId);
+    const q = connectionsRef.where("userId", "==", user.id);
     const snapshot = await q.get();
 
     const connections = snapshot.docs.map((doc) => ({
@@ -121,14 +113,14 @@ export async function removeConnection({ connectionId }: { connectionId: string 
       return { error: "Connection not found" };
     }
 
-    const connectionData = connection.data() as GmailConnection;
-
-    // Check if user has permission to remove this connection
-    if (connectionData.userId !== user.id) {
-      return { error: "You don't have permission to remove this connection" };
-    }
-
     await connectionRef.delete();
+
+    await adminDb
+      .collection("users")
+      .doc(user.id)
+      .update({
+        "usage.connectedGmailAccounts": FieldValue.increment(-1),
+      });
 
     return { success: "Connection removed successfully" };
   } catch (error) {

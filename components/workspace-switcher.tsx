@@ -31,6 +31,7 @@ import { WorkspaceSettings } from "./workspace-settings";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import Link from "next/link";
+import UpgradePlanModal from "./updgrade-plan-modal";
 
 export function WorkspaceSwitcher() {
   const { workspace, workspaces, setWorkspace, setWorkspaces, workspacesLoading } = useWorkspace();
@@ -41,6 +42,7 @@ export function WorkspaceSwitcher() {
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isUpgradePlanModalOpen, setIsUpgradePlanModalOpen] = useState(false);
 
   const handleCreateWorkspace = async () => {
     if (!user) return;
@@ -77,7 +79,7 @@ export function WorkspaceSwitcher() {
 
   return (
     <div className='w-auto lg:w-64'>
-      <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
         <DropdownMenuTrigger asChild>
           <Button
             size='lg'
@@ -167,6 +169,11 @@ export function WorkspaceSwitcher() {
           <DropdownMenuItem
             className='rounded-md px-2 py-1.5 text-primary hover:text-primary hover:bg-primary/10 cursor-pointer'
             onSelect={() => {
+              if (!user) return;
+              if (user?.usage.workspaces >= user?.limits.workspaces) {
+                setIsUpgradePlanModalOpen(true);
+                return;
+              }
               setShowCreateDialog(true);
               setOpen(false);
               setSearchQuery("");
@@ -265,6 +272,13 @@ export function WorkspaceSwitcher() {
           setShowSettingsDialog={setShowSettingsDialog}
         />
       )}
+
+      <UpgradePlanModal
+        title='Workspace limit reached'
+        description='You have reached the maximum number of workspaces for your current plan. Please upgrade your plan to create more workspaces.'
+        isOpen={isUpgradePlanModalOpen}
+        setIsOpen={setIsUpgradePlanModalOpen}
+      />
     </div>
   );
 }

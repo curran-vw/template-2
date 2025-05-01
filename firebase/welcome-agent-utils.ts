@@ -40,17 +40,6 @@ export async function createWelcomeAgent({
       updatedAt: Timestamp.now(),
     };
 
-    if (
-      agent.configuration.emailAccount &&
-      user.usage.connectedGmailAccounts >= user.limits.connectedGmailAccounts
-    ) {
-      return { error: "You have reached the maximum number of connected accounts for your plan" };
-    } else if (agent.configuration.emailAccount) {
-      await userRef.update({
-        "usage.connectedGmailAccounts": FieldValue.increment(1),
-      });
-    }
-
     // Create the agent document
     const docRef = await adminDb.collection("welcome_agents").add(newAgent);
 
@@ -91,20 +80,6 @@ export async function updateWelcomeAgent({
     const docSnap = await docRef.get();
     if (!docSnap.exists) {
       return { error: "Welcome agent does not exist" };
-    }
-
-    const agent = docSnap.data() as WelcomeAgent;
-    const userRef = adminDb.collection("users").doc(user.id);
-    if (
-      !agent.configuration.emailAccount &&
-      updates.configuration?.emailAccount &&
-      user.usage.connectedGmailAccounts >= user.limits.connectedGmailAccounts
-    ) {
-      return { error: "You have reached the maximum number of connected accounts for your plan" };
-    } else {
-      await userRef.update({
-        "usage.connectedGmailAccounts": FieldValue.increment(1),
-      });
     }
 
     const updates_with_timestamp = {

@@ -9,7 +9,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { GmailTokens } from "@/types/gmail";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { connectGoogle } from "@/app/actions/connect-google";
-
+import { useAuth } from "@/hooks/use-auth";
+import UpgradePlanModal from "../updgrade-plan-modal";
 interface ConnectGmailProps {
   onSuccess: (email: string, name: string, tokens: GmailTokens) => Promise<void>;
 }
@@ -18,6 +19,8 @@ export function ConnectGmail({ onSuccess }: ConnectGmailProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [popup, setPopup] = useState<Window | null>(null);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const { user } = useAuth();
+  const [isUpgradePlanModalOpen, setIsUpgradePlanModalOpen] = useState(false);
 
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
@@ -44,6 +47,11 @@ export function ConnectGmail({ onSuccess }: ConnectGmailProps) {
   }, [onSuccess, popup]);
 
   const handleConnect = async () => {
+    if (!user) return;
+    if (user.usage.connectedGmailAccounts >= user.limits.connectedGmailAccounts) {
+      setIsUpgradePlanModalOpen(true);
+      return;
+    }
     setIsConnecting(true);
     setConnectionError(null);
 
@@ -99,6 +107,12 @@ export function ConnectGmail({ onSuccess }: ConnectGmailProps) {
           <AlertDescription>{connectionError}</AlertDescription>
         </Alert>
       )}
+      <UpgradePlanModal
+        title='Gmail connection limit reached'
+        description='You have reached the maximum number of Gmail connections for your plan. Please upgrade your plan to connect more Gmail accounts.'
+        isOpen={isUpgradePlanModalOpen}
+        setIsOpen={setIsUpgradePlanModalOpen}
+      />
 
       <TooltipProvider>
         <Tooltip>

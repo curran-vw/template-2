@@ -43,12 +43,14 @@ export default function Logs() {
     queryKey: ["logs", workspace?.id, agentId, currentPage],
     queryFn: async () => {
       setLoading(true);
-      return await logsUtils.getLogs({
+      const res = await logsUtils.getLogs({
         workspaceId: workspace?.id!,
         agentId,
         page: currentPage,
         pageSize: 10,
       });
+      setLoading(false);
+      return res;
     },
     enabled: !!workspace?.id,
   });
