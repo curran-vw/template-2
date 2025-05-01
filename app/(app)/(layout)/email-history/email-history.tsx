@@ -407,35 +407,30 @@ export default function EmailHistory() {
                   of <span className='font-medium'>{pagination.totalEmails}</span> results
                 </p>
               </div>
-              <div>
-                <nav
-                  className='isolate inline-flex -space-x-px rounded-md shadow-sm'
-                  aria-label='Pagination'
+              <div className='flex items-center justify-center px-4 py-2 text-sm font-medium'>
+                <Button
+                  onClick={handlePreviousPage}
+                  disabled={!pagination.hasPreviousPage}
+                  variant='outline'
+                  size='sm'
+                  className='rounded-r-none'
                 >
-                  <Button
-                    onClick={handlePreviousPage}
-                    disabled={!pagination.hasPreviousPage}
-                    variant='outline'
-                    size='sm'
-                    className='rounded-l-md'
-                  >
-                    <ChevronLeft className='h-4 w-4' />
-                    <span className='ml-2'>Previous</span>
-                  </Button>
-                  <div className='flex items-center justify-center px-4 py-2 text-sm font-medium border border-input bg-background'>
-                    Page {emails.length > 0 ? currentPage : 0} of {pagination.totalPages}
-                  </div>
-                  <Button
-                    onClick={handleNextPage}
-                    disabled={!pagination.hasNextPage}
-                    variant='outline'
-                    size='sm'
-                    className='rounded-r-md'
-                  >
-                    <span className='mr-2'>Next</span>
-                    <ChevronRight className='h-4 w-4' />
-                  </Button>
-                </nav>
+                  <ChevronLeft className='h-4 w-4' />
+                  <span className='ml-2'>Previous</span>
+                </Button>
+                <div className='flex items-center justify-center px-4 h-8 text-sm font-medium border border-input bg-background'>
+                  Page {emails.length > 0 ? currentPage : 0} of {pagination.totalPages}
+                </div>
+                <Button
+                  onClick={handleNextPage}
+                  disabled={!pagination.hasNextPage}
+                  variant='outline'
+                  size='sm'
+                  className='rounded-l-none'
+                >
+                  <span className='mr-2'>Next</span>
+                  <ChevronRight className='h-4 w-4' />
+                </Button>
               </div>
             </div>
           </div>
