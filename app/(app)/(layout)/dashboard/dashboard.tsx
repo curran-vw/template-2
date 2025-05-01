@@ -152,16 +152,10 @@ export default function Dashboard() {
         .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
         .slice(0, 5);
 
-      // Filter agents to get only published ones
-      const activeAgents =
-        agents?.filter((agent: WelcomeAgent) => {
-          return agent.status === "published";
-        }) || [];
-
       return {
         totalEmails: totalSentEmails,
         emailsPending,
-        totalAgents: activeAgents.length,
+        totalAgents: agents?.length || 0,
         recentActivity: recentEmails,
       };
     },
@@ -177,7 +171,8 @@ export default function Dashboard() {
 
   const [upgradePlanModalOpen, setUpgradePlanModalOpen] = useState(false);
   const handleAddAgent = () => {
-    if (user && user.limits.agents > user.usage.agents) {
+    if (!user) return;
+    if (user.limits.agents > user.usage.agents) {
       router.push("/agents/new");
     } else {
       setUpgradePlanModalOpen(true);
@@ -252,7 +247,7 @@ export default function Dashboard() {
               Get started by creating a welcome agent that will automatically send personalized
               emails to your new signups.
             </p>
-            <Button size='lg' className='gap-2 font-medium' onClick={() => handleAddAgent()}>
+            <Button size='lg' className='gap-2 font-medium' onClick={handleAddAgent}>
               <Plus className='h-4 w-4' />
               Create Your First Welcome Agent
             </Button>
@@ -267,8 +262,12 @@ export default function Dashboard() {
             {user && (
               <div className='mt-4 text-center text-sm text-muted-foreground'>
                 <p>
-                  You can create up to {user.limits.agents - user.usage.agents} more agents on your
-                  current plan
+                  {user.limits.agents === user.usage.agents
+                    ? "You have reached the maximum number of agents for your plan. Please upgrade to add more agents."
+                    : `You can create up to ${
+                        user.limits.agents - user.usage.agents
+                      } more agents on your
+                  current plan`}
                 </p>
               </div>
             )}
@@ -344,6 +343,13 @@ export default function Dashboard() {
         </p>
       </div>
 
+      <UpgradePlanModal
+        title='Upgrade to add more agents'
+        description='You have reached the maximum number of agents for your plan. Please upgrade to add more agents.'
+        isOpen={upgradePlanModalOpen}
+        setIsOpen={setUpgradePlanModalOpen}
+      />
+
       {/* Quick Stats */}
       <div className='grid grid-cols-1 gap-4 md:grid-cols-3'>
         <Card className='transition-all hover:shadow-md'>
@@ -412,17 +418,19 @@ export default function Dashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Link href='/agents/new' className='block'>
-              <Button className='w-full gap-2 font-medium'>
-                <Plus className='h-4 w-4' />
-                Create New Agent
-              </Button>
-            </Link>
+            <Button className='w-full gap-2 font-medium' onClick={handleAddAgent}>
+              <Plus className='h-4 w-4' />
+              Create New Agent
+            </Button>
           </CardContent>
           {user && (
             <CardFooter className='text-xs text-muted-foreground'>
-              You can create up to {user.limits.agents - user.usage.agents} more agents on your
-              current plan
+              {user.limits.agents === user.usage.agents
+                ? "You have reached the maximum number of agents for your plan. Please upgrade to add more agents."
+                : `You can create up to ${
+                    user.limits.agents - user.usage.agents
+                  } more agents on your
+              current plan`}
             </CardFooter>
           )}
         </Card>

@@ -171,15 +171,16 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
     checkForChanges();
   }, [agentName, directive, selectedDirective, businessInfo, checkForChanges]);
 
-  const { data: connectedAccountsData } = useQuery({
+  const { data: connectedAccountsData, refetch: refetchConnectedAccounts } = useQuery({
     queryKey: ["connectedAccounts", workspace?.id, agent?.id],
     queryFn: async () => {
       setIsLoadingAccounts(true);
+      console.log("refetching connected accounts");
       const { connections } = await gmailUtils.getGmailConnections();
       setIsLoadingAccounts(false);
       return connections;
     },
-    enabled: !!workspace?.id && !!agent?.id,
+    enabled: !!workspace?.id,
   });
 
   useEffect(() => {
@@ -496,6 +497,7 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
         ...user,
         usage: { ...user.usage, connectedGmailAccounts: user.usage.connectedGmailAccounts + 1 },
       });
+      refetchConnectedAccounts();
     } else {
       toast.error("Error", {
         description: error,
