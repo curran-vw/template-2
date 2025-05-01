@@ -314,10 +314,10 @@ export async function testEmailConnection({ connectionId }: { connectionId: stri
   }
 }
 
-export async function getConnectionByEmail({ agentId, email }: { agentId: string; email: string }) {
+export async function getConnectionByEmail({ email }: { email: string }) {
   try {
     const connectionsRef = adminDb.collection("gmail_connections");
-    const q = connectionsRef.where("email", "==", email).where("agentId", "==", agentId);
+    const q = connectionsRef.where("email", "==", email);
     const snapshot = await q.get();
 
     if (snapshot.empty) {

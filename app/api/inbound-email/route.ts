@@ -81,7 +81,6 @@ export async function POST(request: NextRequest) {
       // Get the Gmail connection for this email account
       const { connection: gmailConnection, error: gmailConnectionError } =
         await gmailUtils.getConnectionByEmail({
-          agentId: agent.id,
           email: agent.configuration.emailAccount,
         });
       if (!gmailConnection) {
