@@ -237,7 +237,7 @@ export async function sendEmail({
       `From: "${connection?.name}" <${connection?.email}>`,
       `Subject: ${subject}`,
       "",
-      `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; white-space: pre-wrap;">
+      `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="margin-bottom: 20px; font-size: 18px;">${body}</div>
       </div>`,
     ].join("\r\n");
@@ -296,7 +296,7 @@ export async function testEmailConnection({ connectionId }: { connectionId: stri
       connectionId,
       to: connection.email,
       subject: "Welcome Agent - Test Connection",
-      body: `
+      body: `      
         <p>This is a test email from your Welcome Agent.</p>
         <p>If you're receiving this, your email connection is working correctly!</p>
         <p>You can now start using this email account to send welcome emails to your new signups.</p>
