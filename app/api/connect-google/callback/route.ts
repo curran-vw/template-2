@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 
 export async function GET(request: Request) {
-  console.log("connect-google/callback");
   const headersList = headers();
   const host = headersList.get("host");
 

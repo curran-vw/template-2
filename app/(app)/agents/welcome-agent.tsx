@@ -487,7 +487,6 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
     });
 
     if (success) {
-      console.log("connected accounts", connectedAccounts);
       setConnectedAccounts((prev) => [...prev, connection]);
       setSelectedEmailAccount(email);
       toast.success("Success", {

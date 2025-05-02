@@ -41,6 +41,5 @@ export async function connectGoogle() {
   });
 
   const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
-  console.log("googleAuthUrl", googleAuthUrl);
   return { success: true, url: googleAuthUrl };
 }
