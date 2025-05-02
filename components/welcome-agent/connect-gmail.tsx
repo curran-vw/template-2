@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { GmailTokens } from "@/types/gmail";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+
 import { connectGoogle } from "@/app/actions/connect-google";
 import { useAuth } from "@/hooks/use-auth";
 import UpgradePlanModal from "../updgrade-plan-modal";
@@ -101,12 +101,6 @@ export function ConnectGmail({ onSuccess }: ConnectGmailProps) {
 
   return (
     <>
-      {connectionError && (
-        <Alert variant='destructive' className='mb-4'>
-          <AlertCircle className='h-4 w-4' />
-          <AlertDescription>{connectionError}</AlertDescription>
-        </Alert>
-      )}
       <UpgradePlanModal
         title='Gmail connection limit reached'
         description='You have reached the maximum number of Gmail connections for your plan. Please upgrade your plan to connect more Gmail accounts.'

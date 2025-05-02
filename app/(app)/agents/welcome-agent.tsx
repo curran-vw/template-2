@@ -175,7 +175,6 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
     queryKey: ["connectedAccounts", workspace?.id, agent?.id],
     queryFn: async () => {
       setIsLoadingAccounts(true);
-      console.log("refetching connected accounts");
       const { connections } = await gmailUtils.getGmailConnections();
       setIsLoadingAccounts(false);
       return connections;
@@ -479,7 +478,7 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
   };
 
   const handleGmailConnected = async (email: string, name: string, tokens: GmailTokens) => {
-    if (!workspace?.id || !user?.id || !agent?.id) return;
+    if (!workspace?.id || !user?.id) return;
 
     const { success, error, connection } = await gmailUtils.saveGmailConnection({
       email,
@@ -488,6 +487,7 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
     });
 
     if (success) {
+      console.log("connected accounts", connectedAccounts);
       setConnectedAccounts((prev) => [...prev, connection]);
       setSelectedEmailAccount(email);
       toast.success("Success", {

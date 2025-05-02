@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import { useWorkspace } from "@/hooks/use-workspace";
 import * as logsUtils from "@/firebase/logs-utils";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+
 import {
   Table,
   TableBody,

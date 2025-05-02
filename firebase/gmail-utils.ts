@@ -237,9 +237,7 @@ export async function sendEmail({
       `From: "${connection?.name}" <${connection?.email}>`,
       `Subject: ${subject}`,
       "",
-      `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px;">
-        <div style="font-size: 18px; white-space: pre-line;">${body}</div>
-      </div>`,
+      body,
     ].join("\r\n");
 
     // Encode the email content

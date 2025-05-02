@@ -483,10 +483,7 @@ export default function Dashboard() {
                         <div className='rounded-full bg-green-100 p-1.5 text-green-600 dark:bg-green-900/30 dark:text-green-400'>
                           <CheckCircle className='h-4 w-4' />
                         </div>
-                        <span>
-                          Email sent to
-                          {activity.recipientEmail}
-                        </span>
+                        <span>Email sent to {activity.recipientEmail}</span>
                       </>
                     ) : (
                       <>
