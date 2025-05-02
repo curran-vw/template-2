@@ -152,8 +152,8 @@ export async function refreshTokenIfNeeded({ connectionId }: { connectionId: str
             "Content-Type": "application/x-www-form-urlencoded",
           },
           body: new URLSearchParams({
-            client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
-            client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+            client_id: process.env.NEXT_PUBLIC_CONNECT_GOOGLE_CLIENT_ID!,
+            client_secret: process.env.CONNECT_GOOGLE_CLIENT_SECRET!,
             refresh_token: data.tokens.refresh_token,
             grant_type: "refresh_token",
           }),
