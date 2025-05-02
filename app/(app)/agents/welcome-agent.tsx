@@ -280,8 +280,8 @@ export default function WelcomeAgent({ agent }: { agent?: WelcomeAgent }) {
     setIsGeneratingEmail(true);
 
     const { success, email, error } = await generateEmail({
-      senderName:
-        connectedAccounts.find((account) => account.email === selectedEmailAccount)?.name ||
+      signupInfoEmail:
+        connectedAccounts.find((account) => account.email === selectedEmailAccount)?.email ||
         "{{placeholder for Gmail account name}}",
       signupInfo,
       directive,
