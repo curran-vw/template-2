@@ -4,6 +4,7 @@ import * as welcomeAgentUtils from "@/firebase/welcome-agent-utils";
 import * as gmailUtils from "@/firebase/gmail-utils";
 import { generateEmail } from "@/firebase/welcome-agent-utils";
 import { createEmailRecord } from "@/firebase/email-history-utils";
+import emailRegex from "email-regex";
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,13 +14,10 @@ export async function POST(request: NextRequest) {
     const agentNotifiactionEmail = formData.get("recipient") as string;
     const bodyPlain = formData.get("body-plain") as string;
 
-    // Extract the name, email, website, and role from the body plain text
-    const NAME = bodyPlain.match(/Name: ([^\n]+)/)?.[1];
-    const EMAIL = bodyPlain.match(/Email: ([^\n]+)/)?.[1];
-    const WEBSITE = bodyPlain.match(/Website: ([^\n]+)/)?.[1];
-    const ROLE = bodyPlain.match(/Role: ([^\n]+)/)?.[1];
+    // Extract the email using the email-regex package
+    const EMAIL = bodyPlain.match(emailRegex())?.[0];
 
-    if (!NAME || !EMAIL || !WEBSITE || !ROLE) {
+    if (!EMAIL) {
       await createEmailRecord({
         agentId: "invalid-agent-id",
         agentName: "invalid-agent-name",
@@ -110,8 +108,8 @@ export async function POST(request: NextRequest) {
         error: generateEmailError,
         email,
       } = await generateEmail({
-        senderName: gmailConnection.name,
         signupInfo: bodyPlain,
+        signupInfoEmail: EMAIL,
         directive: agent.businessContext?.purpose,
         businessContext: {
           website: agent.businessContext?.website,

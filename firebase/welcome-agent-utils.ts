@@ -224,15 +224,15 @@ export async function getWelcomeAgents({ workspaceId }: { workspaceId: string })
 }
 
 export async function generateEmail({
-  senderName,
   signupInfo,
+  signupInfoEmail,
   directive,
   businessContext,
   workspaceId,
   agentId,
 }: {
-  senderName: string;
   signupInfo: string;
+  signupInfoEmail: string;
   directive: string;
   businessContext: {
     website: string;
@@ -244,14 +244,6 @@ export async function generateEmail({
   agentId?: string;
 }) {
   try {
-    const NAME = signupInfo.match(/Name: ([^\n]+)/)?.[1];
-    const EMAIL = signupInfo.match(/Email: ([^\n]+)/)?.[1];
-    const WEBSITE = signupInfo.match(/Website: ([^\n]+)/)?.[1];
-    const ROLE = signupInfo.match(/Role: ([^\n]+)/)?.[1];
-    if (!NAME || !EMAIL || !WEBSITE || !ROLE) {
-      throw new Error("No name, email, website, or role found in signup info");
-    }
-
     // Log the start of the process
     await addLog({
       type: "api",
@@ -403,7 +395,7 @@ export async function generateEmail({
               If there's no specific info at all about the signup, just make it generic 
               (and don't make a note that it is a template). 
               Address the person by first name if available (but just make it general if no name is provided). 
-              Sign off from the name ${senderName}
+              Sign off from the name ${signupInfoEmail}
 
               Please use the following directive for your email. If it specifies a different length, please adjust accordingly: ${directive}
 
@@ -494,7 +486,7 @@ export async function generateEmail({
     return {
       success: true,
       email: {
-        to: EMAIL,
+        to: signupInfoEmail,
         subject,
         body: emailBody,
       },

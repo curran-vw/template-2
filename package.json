@@ -37,6 +37,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
+    "email-regex": "^5.0.0",
     "firebase": "^10.14.1",
     "firebase-admin": "^13.2.0",
     "framer-motion": "^11.3.31",
