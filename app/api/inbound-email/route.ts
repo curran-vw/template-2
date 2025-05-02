@@ -5,7 +5,7 @@ import * as gmailUtils from "@/firebase/gmail-utils";
 import { generateEmail } from "@/firebase/welcome-agent-utils";
 import { createEmailRecord } from "@/firebase/email-history-utils";
 
-const regex = "[^\\.\\s@:](?:[^\\s@:]*[^\\s@:\\.])?@[^\\.\\s@]+(?:\\.[^\\.\\s@]+)*";
+const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,7 +16,8 @@ export async function POST(request: NextRequest) {
     const bodyPlain = formData.get("body-plain") as string;
 
     // Extract the email using the email-regex package
-    const EMAIL = bodyPlain.match(new RegExp(`^${regex}$`, "g"))?.[0];
+    const emailMatch = bodyPlain.match(emailRegex);
+    const EMAIL = emailMatch ? emailMatch[0] : null;
 
     if (!EMAIL) {
       await createEmailRecord({
