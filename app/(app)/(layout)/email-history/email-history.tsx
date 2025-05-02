@@ -86,12 +86,12 @@ export default function EmailHistory() {
       setLoading(false);
     }
   }, [emailsData]);
+  const [isSending, setIsSending] = useState<null | string>(null);
 
-  const [isSending, setIsSending] = useState(false);
   const handleApprove = async (emailId: string) => {
     if (!workspace?.id) return;
 
-    setIsSending(true);
+    setIsSending(emailId);
     const { success, error } = await emailHistoryUtils.updateEmailStatusToSent({
       emailId,
     });
@@ -105,7 +105,7 @@ export default function EmailHistory() {
         description: error,
       });
     }
-    setIsSending(false);
+    setIsSending(null);
   };
 
   // Add pagination handlers
@@ -202,7 +202,7 @@ export default function EmailHistory() {
                       <div className='flex items-center justify-end gap-2 opacity-80 group-hover:opacity-100'>
                         {email.status === "under_review" && (
                           <Button onClick={() => handleApprove(email.id)} className='gap-2'>
-                            {isSending ? <LoadingSpinner /> : <Send />}
+                            {isSending === email.id ? <LoadingSpinner /> : <Send />}
                             <span>Send</span>
                           </Button>
                         )}

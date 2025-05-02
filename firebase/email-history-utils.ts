@@ -140,7 +140,7 @@ export async function getEmailById({ emailId }: { emailId: string }) {
 
   try {
     const emailRef = adminDb.collection("email_history").doc(emailId);
-    const emailDoc = await emailRef.get( );
+    const emailDoc = await emailRef.get();
 
     if (emailDoc.exists) {
       return {
