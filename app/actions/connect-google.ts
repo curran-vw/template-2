@@ -13,21 +13,21 @@ export async function connectGoogle() {
   const productionUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.welcomeagent.ai";
 
   if (host?.includes("localhost")) {
-    redirectUri = "http://localhost:3000/api/google/callback";
+    redirectUri = "http://localhost:3000/api/connect-google/callback";
   } else if (host?.includes("replit.app")) {
     // Published Replit app domain
-    redirectUri = `https://${host}/api/google/callback`;
+    redirectUri = `https://${host}/api/connect-google/callback`;
   } else if (host?.includes("worf.replit.dev")) {
     // Staging Replit domain for development
-    redirectUri = `https://${host}/api/google/callback`;
+    redirectUri = `https://${host}/api/connect-google/callback`;
   } else {
     // Production domain
-    redirectUri = `${productionUrl}/api/google/callback`;
+    redirectUri = `${productionUrl}/api/connect-google/callback`;
   }
 
-  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+  const clientId = process.env.NEXT_PUBLIC_CONNECT_GOOGLE_CLIENT_ID;
   if (!clientId) {
-    throw new Error("NEXT_PUBLIC_GOOGLE_CLIENT_ID is not configured");
+    throw new Error("NEXT_PUBLIC_CONNECT_GOOGLE_CLIENT_ID is not configured");
   }
 
   // Configure OAuth 2.0 parameters
