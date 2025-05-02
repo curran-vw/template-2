@@ -122,7 +122,7 @@ export async function updateEmailStatusToSent({ emailId }: { emailId: string }) 
 
       await docRef.update({
         status: "sent",
-        updatedAt: new Date().toISOString(),
+        updatedAt: Timestamp.now(),
       });
 
       return { success: "Email sent successfully" };
@@ -140,7 +140,7 @@ export async function getEmailById({ emailId }: { emailId: string }) {
 
   try {
     const emailRef = adminDb.collection("email_history").doc(emailId);
-    const emailDoc = await emailRef.get();
+    const emailDoc = await emailRef.get( );
 
     if (emailDoc.exists) {
       return {
