@@ -110,6 +110,7 @@ export async function POST(request: NextRequest) {
         error: generateEmailError,
         email,
       } = await generateEmail({
+        regardsName: gmailConnection.name,
         signupInfo: bodyPlain,
         signupInfoEmail: EMAIL,
         directive: agent.businessContext?.purpose,

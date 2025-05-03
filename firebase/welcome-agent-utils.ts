@@ -224,6 +224,7 @@ export async function getWelcomeAgents({ workspaceId }: { workspaceId: string })
 }
 
 export async function generateEmail({
+  regardsName,
   signupInfo,
   signupInfoEmail,
   directive,
@@ -231,6 +232,7 @@ export async function generateEmail({
   workspaceId,
   agentId,
 }: {
+  regardsName: string;
   signupInfo: string;
   signupInfoEmail: string;
   directive: string;
@@ -395,7 +397,7 @@ export async function generateEmail({
               If there's no specific info at all about the signup, just make it generic 
               (and don't make a note that it is a template). 
               Address the person by first name if available (but just make it general if no name is provided). 
-              Sign off from the name ${signupInfoEmail}
+              Sign off from the name ${regardsName}
 
               Please use the following directive for your email. If it specifies a different length, please adjust accordingly: ${directive}
 
