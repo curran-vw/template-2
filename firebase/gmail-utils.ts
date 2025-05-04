@@ -237,7 +237,7 @@ export async function sendEmail({
       `From: "${connection?.name}" <${connection?.email}>`,
       `Subject: ${subject}`,
       "",
-      body,
+      `<div style="white-space: pre-wrap;">${body}</div>`,
     ].join("\r\n");
 
     // Encode the email content
