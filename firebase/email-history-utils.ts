@@ -13,7 +13,7 @@ export type EmailRecord = {
   workspaceId: string;
   subject: string;
   body: string;
-  status: "under_review" | "sent" | "failed";
+  status: "under_review" | "sent" | "failed" | "denied";
   error?: string;
   gmailConnectionId: string;
   userInfo: string;
@@ -179,7 +179,7 @@ export async function createEmailRecord({
   workspaceId: string;
   subject: string;
   body: string;
-  status: "sent" | "under_review" | "failed";
+  status: "sent" | "under_review" | "failed" | "denied";
   gmailConnectionId: string;
   userInfo: string;
   businessContext?: {
@@ -213,5 +213,34 @@ export async function createEmailRecord({
   } catch (error) {
     console.error("Error creating email record:", error);
     return { error: "Failed to create email record" };
+  }
+}
+
+export async function updateEmailStatusToDenied({ emailId }: { emailId: string }) {
+  await requireAuth();
+
+  try {
+    const docRef = adminDb.collection("email_history").doc(emailId);
+    const emailDoc = await docRef.get();
+
+    if (!emailDoc.exists) {
+      return { error: "Email record not found" };
+    }
+
+    const emailData = emailDoc.data();
+
+    if (emailData?.status === "under_review") {
+      await docRef.update({
+        status: "denied",
+        updatedAt: Timestamp.now(),
+      });
+
+      return { success: "Email denied successfully" };
+    }
+
+    return { success: "Email is not under review" };
+  } catch (error) {
+    console.error("Error denying email:", error);
+    return { error: "Failed to deny email" };
   }
 }

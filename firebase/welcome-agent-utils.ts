@@ -486,6 +486,7 @@ export async function generateEmail({
     });
 
     return {
+      userInfo,
       success: true,
       email: {
         to: signupInfoEmail,

@@ -487,7 +487,7 @@ export default function Dashboard() {
                       </>
                     ) : (
                       <>
-                        <div className='rounded-full bg-red-100 p-1.5 text-red-600 dark:bg-red-900/30 dark:text-red-400'>
+                        <div className='rounded-full bg-yellow-100 p-1.5 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400'>
                           <AlertCircle className='h-4 w-4' />
                         </div>
                         <span>Email is under review for {activity.recipientEmail}</span>

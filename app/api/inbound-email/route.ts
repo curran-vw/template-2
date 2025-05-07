@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
         subject: "Invalid Signup Info",
         body: "Invalid signup info",
         status: "failed",
-        userInfo: bodyPlain,
+        userInfo: "Invalid user info",
         error: "Invalid signup info",
       });
       return NextResponse.json({ error: "Invalid signup info" }, { status: 400 });
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
         subject: "Invalid Notification Email",
         body: "Invalid notification email",
         status: "failed",
-        userInfo: bodyPlain,
+        userInfo: "Invalid user info",
         error: notificationEmailError,
       });
 
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
         subject: "Invalid Welcome Agent",
         body: "Invalid welcome agent",
         status: "failed",
-        userInfo: bodyPlain,
+        userInfo: "Invalid user info",
         error: agentError,
       });
       return NextResponse.json({ error: "Welcome agent not found" }, { status: 404 });
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
           subject: "Invalid Gmail Connection",
           body: "Invalid gmail connection",
           status: "failed",
-          userInfo: bodyPlain,
+          userInfo: "Invalid user info",
           businessContext: agent.businessContext,
           error: gmailConnectionError,
         });
@@ -109,6 +109,7 @@ export async function POST(request: NextRequest) {
         success: generateEmailSuccess,
         error: generateEmailError,
         email,
+        userInfo,
       } = await generateEmail({
         regardsName: gmailConnection.name,
         signupInfo: bodyPlain,
@@ -136,7 +137,7 @@ export async function POST(request: NextRequest) {
             subject: email.subject,
             body: email.body,
             status: "under_review",
-            userInfo: bodyPlain,
+            userInfo,
             businessContext: agent.businessContext,
           });
 
@@ -164,7 +165,7 @@ export async function POST(request: NextRequest) {
             body: email.body,
             status: "sent",
             gmailConnectionId: gmailConnection.id,
-            userInfo: bodyPlain,
+            userInfo,
             businessContext: agent.businessContext,
           });
           return NextResponse.json({ success: true, message: "Email sent successfully" });
@@ -178,7 +179,7 @@ export async function POST(request: NextRequest) {
             body: email.body,
             status: "failed",
             gmailConnectionId: gmailConnection.id,
-            userInfo: bodyPlain,
+            userInfo,
             businessContext: agent.businessContext,
             error: gmailError,
           });
@@ -194,7 +195,7 @@ export async function POST(request: NextRequest) {
           body: bodyPlain,
           status: "failed",
           gmailConnectionId: "invalid-gmail-connection-id",
-          userInfo: bodyPlain,
+          userInfo: "Invalid user info",
           businessContext: agent.businessContext,
           error: generateEmailError,
         });

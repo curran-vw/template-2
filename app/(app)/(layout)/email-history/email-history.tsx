@@ -13,6 +13,8 @@ import {
   RefreshCw,
   AlertCircle,
   Send,
+  X,
+  Check,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -35,6 +37,14 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useQuery } from "@tanstack/react-query";
 import { EmailRecord } from "@/firebase/email-history-utils";
 import { LoadingSpinner } from "@/components/loading-spinner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function EmailHistory() {
   const { workspace } = useWorkspace();
@@ -87,6 +97,10 @@ export default function EmailHistory() {
     }
   }, [emailsData]);
   const [isSending, setIsSending] = useState<null | string>(null);
+  const [isDenying, setIsDenying] = useState<null | string>(null);
+  const [confirmSendDialogOpen, setConfirmSendDialogOpen] = useState(false);
+  const [confirmDenyDialogOpen, setConfirmDenyDialogOpen] = useState(false);
+  const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
 
   const handleApprove = async (emailId: string) => {
     if (!workspace?.id) return;
@@ -106,6 +120,38 @@ export default function EmailHistory() {
       });
     }
     setIsSending(null);
+    setConfirmSendDialogOpen(false);
+  };
+
+  const handleDeny = async (emailId: string) => {
+    if (!workspace?.id) return;
+
+    setIsDenying(emailId);
+    const { success, error } = await emailHistoryUtils.updateEmailStatusToDenied({
+      emailId,
+    });
+    if (success) {
+      toast.success("Success", {
+        description: "Email has been denied",
+      });
+      refetchEmails();
+    } else {
+      toast.error("Error", {
+        description: error || "Failed to deny email",
+      });
+    }
+    setIsDenying(null);
+    setConfirmDenyDialogOpen(false);
+  };
+
+  const openSendConfirmDialog = (emailId: string) => {
+    setSelectedEmailId(emailId);
+    setConfirmSendDialogOpen(true);
+  };
+
+  const openDenyConfirmDialog = (emailId: string) => {
+    setSelectedEmailId(emailId);
+    setConfirmDenyDialogOpen(true);
   };
 
   // Add pagination handlers
@@ -201,10 +247,32 @@ export default function EmailHistory() {
                     <TableCell className='text-right'>
                       <div className='flex items-center justify-end gap-2 opacity-80 group-hover:opacity-100'>
                         {email.status === "under_review" && (
-                          <Button onClick={() => handleApprove(email.id)} className='gap-2'>
-                            {isSending === email.id ? <LoadingSpinner /> : <Send />}
-                            <span>Send</span>
-                          </Button>
+                          <>
+                            <Button
+                              onClick={() => openSendConfirmDialog(email.id)}
+                              className='gap-2'
+                              variant='default'
+                            >
+                              {isSending === email.id ? (
+                                <LoadingSpinner />
+                              ) : (
+                                <Send className='h-4 w-4' />
+                              )}
+                              <span>Send</span>
+                            </Button>
+                            <Button
+                              onClick={() => openDenyConfirmDialog(email.id)}
+                              className='gap-2'
+                              variant='destructive'
+                            >
+                              {isDenying === email.id ? (
+                                <LoadingSpinner />
+                              ) : (
+                                <X className='h-4 w-4 text-white' />
+                              )}
+                              <span>Deny</span>
+                            </Button>
+                          </>
                         )}
                         <Button
                           onClick={() =>
@@ -436,6 +504,57 @@ export default function EmailHistory() {
           </div>
         </Card>
       )}
+
+      {/* Send Confirmation Dialog */}
+      <Dialog open={confirmSendDialogOpen} onOpenChange={setConfirmSendDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Send Email</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to send this email? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant='outline' onClick={() => setConfirmSendDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => selectedEmailId && handleApprove(selectedEmailId)}
+              disabled={isSending !== null}
+              className='gap-2'
+            >
+              {isSending ? <LoadingSpinner /> : <Check className='h-4 w-4' />}
+              Confirm Send
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Deny Confirmation Dialog */}
+      <Dialog open={confirmDenyDialogOpen} onOpenChange={setConfirmDenyDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Deny Email</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to deny this email? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant='outline' onClick={() => setConfirmDenyDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant='destructive'
+              onClick={() => selectedEmailId && handleDeny(selectedEmailId)}
+              disabled={isDenying !== null}
+              className='gap-2'
+            >
+              {isDenying ? <LoadingSpinner /> : <X className='h-4 w-4' />}
+              Confirm Deny
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
