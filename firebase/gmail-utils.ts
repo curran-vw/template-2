@@ -237,7 +237,7 @@ export async function sendEmail({
       `From: "${connection?.name}" <${connection?.email}>`,
       `Subject: ${subject}`,
       "",
-      `<div style="white-space: pre-wrap;">${body}</div>`,
+      `${isTest ? body : `<div style="white-space: pre-wrap;">${body}</div>`}`,
     ].join("\r\n");
 
     // Encode the email content
@@ -296,9 +296,9 @@ export async function testEmailConnection({ connectionId }: { connectionId: stri
       subject: "Welcome Agent - Test Connection",
       body: `
       <div>
-        <p>This is a test email from your Welcome Agent. <br/>
-        If you're receiving this, your email connection is working correctly! <br/>
-        You can now start using this email account to send welcome emails to your new signups.</p>
+        <p>This is a test email from your Welcome Agent.</p>
+        <p>If you're receiving this, your email connection is working correctly!</p>
+        <p>You can now start using this email account to send welcome emails to your new signups.</p>
       </div>
       `,
       isTest: true,
